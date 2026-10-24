@@ -8,6 +8,8 @@
 #   using the API Guardian test repository.
 # ============================================================
 
+import pytest
+
 from git import Repo
 
 from models.schemas import FileChange
@@ -29,6 +31,7 @@ from services.git_commit_service import (
 )
 
 
+@pytest.mark.integration
 def test_local_commit():
     """
     Clone the test repository, apply API migrations,

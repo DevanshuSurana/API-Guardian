@@ -6,7 +6,6 @@ import os
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-
 REPAIR_PROMPT = """
 You are API Guardian's code repair agent.
 
@@ -60,7 +59,7 @@ def repair_migration(
 
     selected_model = model or os.getenv(
         "OLLAMA_MODEL",
-        "qwen2.5-coder:3b"
+        "qwen2.5:latest"
     )
 
     payload = {

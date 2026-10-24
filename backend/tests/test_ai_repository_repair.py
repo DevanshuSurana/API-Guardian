@@ -2,6 +2,8 @@
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from models.schemas import FileChange
 from services.ai_repair_integration import run_ai_repair
 
@@ -23,6 +25,7 @@ broken_code = """def checkout():
 """
 
 
+@pytest.mark.integration
 def test_ai_repository_repair():
     with tempfile.TemporaryDirectory() as directory:
         repository = Path(directory)

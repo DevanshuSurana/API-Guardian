@@ -10,6 +10,8 @@
 #   No commits or remote writes are performed.
 # ============================================================
 
+import pytest
+
 from models.schemas import FileChange
 
 from services.repository_service import (
@@ -30,6 +32,7 @@ from services.git_commit_service import (
 )
 
 
+@pytest.mark.integration
 def test_git_commit_preparation():
     """Verify commit preparation without creating a commit."""
 

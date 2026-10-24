@@ -7,52 +7,33 @@
 #   Expose endpoints for AI-powered API migration analysis.
 # ============================================================
 
-from fastapi import APIRouter
-
-from models.schemas import (
-    MigrationRequest,
-    MigrationResponse
-)
-
-from services.agent_service import analyze_migration
-
-from models.schemas import (
-    PatchPreviewRequest,
-    PatchPreviewResponse,
-)
-
-from services.migration_service import preview_migration
-
-from fastapi import HTTPException
+from fastapi import APIRouter, HTTPException
 from git.exc import GitCommandError
-from models.schemas import BatchApplyResponse
-from services.migration_service import apply_migration_batch
-from services.patch_service import PatchError
-
-from models.schemas import MigrationPrepareResponse
-from services.migration_service import prepare_migration
-
 from models.schemas import (
-    PreparePullRequestRequest,
-    PreparePullRequestResponse,
-)
-
-from services.migration_service import (
-    prepare_migration_pull_request,
-)
-
-from models.schemas import (
+    BatchApplyResponse,
+    LocalCommitResponse,
     MigrationPlanRequest,
     MigrationPlanResponse,
+    MigrationPrepareResponse,
+    MigrationRequest,
+    MigrationResponse,
+    PatchPreviewRequest,
+    PatchPreviewResponse,
+    PreparePullRequestRequest,
+    PreparePullRequestResponse,
+    PublishDryRunResponse,
 )
-
-from services.migration_service import create_migration_plan
-
-from models.schemas import PublishDryRunResponse
-from services.migration_service import prepare_publish_dry_run
-
-from models.schemas import LocalCommitResponse
-from services.migration_service import execute_local_migration_commit
+from services.agent_service import analyze_migration
+from services.migration_service import (
+    apply_migration_batch,
+    create_migration_plan,
+    execute_local_migration_commit,
+    prepare_migration,
+    prepare_migration_pull_request,
+    prepare_publish_dry_run,
+    preview_migration,
+)
+from services.patch_service import PatchError
 
 # Group migration-related endpoints together
 router = APIRouter(
@@ -78,8 +59,23 @@ async def analyze_api_migration(
         A structured migration analysis response.
     """
 
-    # Pass the validated request to the agent service
-    result = await analyze_migration(request)
+    try:
+        result = await analyze_migration(request)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+    except GitCommandError as error:
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to clone the requested repository.",
+        ) from error
+    except RuntimeError as error:
+        raise HTTPException(
+            status_code=503,
+            detail=str(error),
+        ) from error
 
     # Return the agent's proposed changes
     return result

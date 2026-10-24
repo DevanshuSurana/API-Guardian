@@ -1,5 +1,15 @@
+.DS_Store
 .env
 .env.*
 .venv/
 __pycache__/
 *.pyc
+*.py[cod]
+mlruns/
+.dvc/cache/
+mlops/evaluation/reports/
+.pytest_cache/
+
+# Generated Python and experiment artifacts
+*.egg-info/
+mlflow.db

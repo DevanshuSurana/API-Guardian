@@ -16,7 +16,7 @@ The agent analyzes an API changelog and source code, identifies potential breaki
 
 - Python 3.10 or newer
 - [Ollama](https://ollama.com/) installed and running
-- The `qwen2.5-coder:3b` model downloaded, or another compatible model
+- The `qwen2.5:latest` model downloaded, or another compatible model
 - No internet connection is required for model inference after the model is downloaded
 
 ## 2. Setup
@@ -37,7 +37,7 @@ Install Ollama from https://ollama.com/ if it is not already installed.
 Download the default model:
 
 ```bash
-ollama pull qwen2.5-coder:3b
+ollama pull qwen2.5:latest
 ```
 
 Make sure the Ollama service is running. Depending on your installation, you may need to open the Ollama app or run:
@@ -60,7 +60,7 @@ python -m pip install -r requirements.txt
 Install Ollama from https://ollama.com/, then run:
 
 ```powershell
-ollama pull qwen2.5-coder:3b
+ollama pull qwen2.5:latest
 ```
 
 Make sure the Ollama service is running before starting the agent.
@@ -70,21 +70,21 @@ Make sure the Ollama service is running before starting the agent.
 The default configuration is:
 
 - Ollama host: `http://localhost:11434`
-- Model: `qwen2.5-coder:3b`
+- Model: `qwen2.5:latest`
 
 To use a different compatible local model, set `OLLAMA_MODEL`.
 
 macOS / Linux:
 
 ```bash
-export OLLAMA_MODEL="qwen2.5-coder:3b"
+export OLLAMA_MODEL="qwen2.5:latest"
 export OLLAMA_HOST="http://localhost:11434"
 ```
 
 Windows PowerShell:
 
 ```powershell
-$env:OLLAMA_MODEL="qwen2.5-coder:3b"
+$env:OLLAMA_MODEL="qwen2.5:latest"
 $env:OLLAMA_HOST="http://localhost:11434"
 ```
 
@@ -120,12 +120,12 @@ The sample payment API is fictional. The generated migration is a proposal and m
 A separate manual test checks whether unrelated code is left unchanged:
 
 ```bash
-python test_unaffected.py
+python -m examples.unaffected_demo
 ```
 
 For the current greeting-function example, the expected result is:
 
-- `breaking_change`: `True`
+- `breaking_change`: `True` (the changelog describes a removal)
 - `affected`: `False`
 - `affected_usages`: an empty list
 - `updated_code` exactly matches the original source

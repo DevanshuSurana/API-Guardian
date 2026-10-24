@@ -11,6 +11,8 @@
 
 import asyncio
 
+import pytest
+
 from models.schemas import MigrationPlanRequest, FileChange
 from services.migration_service import (
     prepare_publish_dry_run,
@@ -45,6 +47,7 @@ def build_test_request():
     )
 
 
+@pytest.mark.integration
 async def test_unauthorized_publishing():
     """Ensure unauthorized publishing is rejected."""
 
@@ -64,6 +67,7 @@ async def test_unauthorized_publishing():
     )
 
 
+@pytest.mark.integration
 def test_complete_dry_run():
     """Verify the complete planning workflow."""
 

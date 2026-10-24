@@ -12,7 +12,6 @@ from pathlib import Path
 
 from models.schemas import FileChange
 
-
 # Step 1: Locate the project root.
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -30,16 +29,16 @@ sys.path.insert(0, str(AGENT_DIRECTORY))
 from api_agent import generate_migration
 
 
-def analyze_file_with_ai(
+def analyze_source_with_ai(
     changelog: str,
     file_path: str,
     source_code: str,
-) -> FileChange | None:
+) -> tuple[bool, FileChange | None]:
     """
-    Analyze a source file using Member 1's AI agent.
+    Analyze a source file and preserve the breaking-change classification.
 
-    Returns FileChange when a modification is proposed.
-    Returns None when the file is unaffected or unchanged.
+    Returns (breaking_change, FileChange). The FileChange is None if the
+    source file is unaffected or the model proposes no change.
 
     Does not modify any repository files.
     """
@@ -52,19 +51,30 @@ def analyze_file_with_ai(
 
     # Step 5: Check whether the file is affected.
     if not result["affected"]:
-        return None
+        return result["breaking_change"], None
 
     # Step 6: Get the AI-generated code.
     updated_code = result["updated_code"]
 
     # Step 7: Skip unchanged code.
     if updated_code == source_code:
-        return None
+        return result["breaking_change"], None
 
     # Step 8: Convert the AI output to our backend schema.
-    return FileChange(
+    change = FileChange(
         file_path=file_path,
         original_code=source_code,
         updated_code=updated_code,
         explanation=result["explanation"],
     )
+    return result["breaking_change"], change
+
+
+def analyze_file_with_ai(
+    changelog: str,
+    file_path: str,
+    source_code: str,
+) -> FileChange | None:
+    """Compatibility wrapper returning only a proposed file change."""
+    _, change = analyze_source_with_ai(changelog, file_path, source_code)
+    return change

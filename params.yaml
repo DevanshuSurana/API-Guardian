@@ -1,0 +1,5 @@
+evaluation:
+  dataset: datasets/api_changes/api_changes.jsonl
+  report: mlops/evaluation/reports/latest.json
+  experiment_name: api-guardian-evaluation
+  run_name: baseline-smoke-test

@@ -326,6 +326,20 @@ Interactive documentation:
 
 The publishing executor is currently a service function and is **not exposed as a public publishing endpoint**.
 
+### Example: Analyze a repository with the local agent
+
+Send this JSON body to `POST /api/migrations/analyze`:
+
+```json
+{
+  "owner": "example-owner",
+  "repo": "example-repository",
+  "changelog": "client.old_call() was removed. Use client.new_call() instead."
+}
+```
+
+The endpoint clones the public repository into a temporary workspace, analyzes supported source files with Ollama, returns proposed changes, then removes the workspace. It does not apply patches, commit, or publish to GitHub. Set `OLLAMA_MODEL` to a model tag already installed in Ollama.
+
 ### Example: Migration plan
 
 **Request**
@@ -482,7 +496,7 @@ sequenceDiagram
     Note over B,G: Remote publishing remains disabled by default
 ```
 
-**Integration status:** The backend has a mock agent adapter and structured migration request contracts. Replacing the mock with Member 1's real agent implementation is a remaining team integration task.
+**Integration status:** `POST /api/migrations/analyze` clones a public repository, scans up to 20 source files, and sends them with the changelog to the local Ollama agent. It returns proposed changes but does not apply them. Files over 128 KiB and files beyond the scan limit are skipped and reported in the response. Configure the model and Ollama host with `OLLAMA_MODEL` and `OLLAMA_HOST`.
 
 ---
 
@@ -492,6 +506,7 @@ sequenceDiagram
 
 - Python 3.10 or later
 - Git installed and available in `PATH`
+- Ollama installed and running, with `qwen2.5:latest` available by default
 - A GitHub account
 - A GitHub personal access token for authenticated GitHub operations
 
@@ -522,6 +537,7 @@ On Windows:
 ```bash
 cd backend
 python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 ```
 
 ### Configure environment variables
@@ -533,6 +549,22 @@ Keep publishing disabled:
 ```env
 GITHUB_TOKEN=your_github_token_here
 API_GUARDIAN_ENABLE_PUBLISH=false
+```
+
+Set the local Ollama model and host in the shell before starting the backend.
+
+macOS/Linux:
+
+```bash
+export OLLAMA_MODEL=qwen2.5:latest
+export OLLAMA_HOST=http://localhost:11434
+```
+
+Windows PowerShell:
+
+```powershell
+$env:OLLAMA_MODEL="qwen2.5:latest"
+$env:OLLAMA_HOST="http://localhost:11434"
 ```
 
 ### Start the API server
@@ -551,23 +583,24 @@ Open:
 
 ## 10. Testing
 
-The backend contains tests for repository operations, patch validation, Git operations, GitHub permissions, and publishing safeguards.
+The default test suite is offline and skips tests marked `integration`.
 
-### Run individual tests
-
-From the `backend` directory:
+Run the unit tests from the `backend` directory:
 
 ```bash
-python test_patch_service.py
-python test_batch_patch.py
-python test_git_branch.py
-python test_git_commit.py
-python test_local_commit.py
-python test_github_permissions.py
-python test_github_access.py
-python test_pull_request.py
-python test_github_publish.py
-python test_publishing_integration.py
+python -m pytest -q
+```
+
+AI and GitHub integration tests are opt-in because they call Ollama or clone a public GitHub repository. With Ollama running and `OLLAMA_MODEL` set, run the AI repair integration with:
+
+```bash
+python -m pytest -o addopts= -m integration tests/test_ai_repository_repair.py
+```
+
+Two repository-clone tests also require network access:
+
+```bash
+python -m pytest -o addopts= -m integration tests/test_git_commit.py tests/test_local_commit.py
 ```
 
 ### Test coverage areas
@@ -679,7 +712,7 @@ Generated patches must be reviewed and tested before merging.
 | Repository cloning | Implemented |
 | Source-file discovery | Implemented |
 | Migration request schemas | Implemented |
-| AI agent adapter | Mock implementation |
+| AI agent adapter | Local Ollama integration for repository analysis |
 | Patch validation | Implemented |
 | Patch preview | Implemented |
 | Batch patch application | Implemented |
@@ -691,7 +724,8 @@ Generated patches must be reviewed and tested before merging.
 | Publishing dry run | Implemented and tested |
 | Remote branch publishing | Executor implemented; authorization and testing pending |
 | Draft PR creation | Executor implemented; authorization and testing pending |
-| Full AI-to-GitHub integration | Pending team integration |
+| Repository analysis with local Ollama | Implemented; returns proposed changes without applying them |
+| End-to-end AI-to-GitHub publishing | Pending; publishing remains gated and requires integration tests |
 
 ---
 
@@ -699,16 +733,15 @@ Generated patches must be reviewed and tested before merging.
 
 Potential improvements include:
 
-1. Replace the mock AI agent with the actual migration analysis service.
+1. Run repository tests against each generated patch before preparing a PR.
 2. Add a persistent migration job model and job-status endpoints.
 3. Support background processing for large repositories.
-4. Integrate automated test execution before preparing PRs.
-5. Add GitHub webhook support for relevant repository events.
-6. Track migration history, success rates, and failure reasons.
-7. Support multiple repositories and API providers with scoped authorization.
-8. Add human approval checkpoints before remote publishing.
-9. Improve rollback and recovery for partial publishing failures.
-10. Integrate Member 3's evaluation metrics into migration reports.
+4. Add GitHub webhook support for relevant repository events.
+5. Track migration history, success rates, latency, and failure reasons.
+6. Support multiple repositories and API providers with scoped authorization.
+7. Add human approval checkpoints before remote publishing.
+8. Improve rollback and recovery for partial publishing failures.
+9. Integrate Member 3's evaluation metrics into migration reports.
 
 ---
 
@@ -743,6 +776,6 @@ API Guardian's backend provides the infrastructure for turning proposed API migr
 
 The current implementation supports the complete local workflow from repository cloning to verified Git commits, with publishing plans and draft PR metadata prepared for later use.
 
-The next major milestone is to connect the real AI agent and safely validate GitHub publishing end to end.
+The next major milestone is to validate proposed patches with the target repository's own tests and connect Member 3's evaluation reports to real agent runs. GitHub publishing remains gated and requires separate integration testing and explicit approval.
 
 **The goal is not to merge AI-generated code automatically, but to reduce repetitive migration work while keeping developers in control of the final changes.**
