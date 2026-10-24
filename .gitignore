@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+mlruns/
+.dvc/cache/
+mlops/evaluation/reports/
+.pytest_cache/

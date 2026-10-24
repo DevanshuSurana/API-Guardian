@@ -1,0 +1,4 @@
+{"case_id":"rename_method_001","before":"user = client.fetch_user(user_id)","after":"user = client.get_user(user_id)","test_expectation":"Existing user lookup test passes."}
+{"case_id":"removed_parameter_002","before":"client.upload(path, overwrite=True)","after":"client.upload(path)","test_expectation":"Upload tests pass and overwrite semantics are verified."}
+{"case_id":"return_type_003","before":"items = client.get_items()","after":"page = client.get_items()\nitems = page.items","test_expectation":"Item iteration and pagination tests pass."}
+{"case_id":"sync_to_async_008","before":"result = client.fetch()","after":"result = await client.fetch()","test_expectation":"Async test awaits the operation and checks result."}

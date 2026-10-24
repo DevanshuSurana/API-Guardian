@@ -1,0 +1,4 @@
+Metadata-Version: 2.4
+Name: api-guardian-mlops
+Version: 0.1.0
+Requires-Python: <3.15,>=3.13

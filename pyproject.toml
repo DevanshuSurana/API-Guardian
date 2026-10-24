@@ -1,0 +1,17 @@
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "api-guardian-mlops"
+version = "0.1.0"
+requires-python = ">=3.13,<3.15"
+
+[tool.setuptools.packages.find]
+include = ["mlops*"]
+exclude = ["datasets*", "tests*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
