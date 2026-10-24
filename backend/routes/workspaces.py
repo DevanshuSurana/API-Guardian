@@ -12,8 +12,6 @@
 #   - Clone public repositories
 #   - Return supported source file paths
 #   - Clean up temporary files
-#
-# Team: Member 2 - Backend & GitHub Integration
 # ============================================================
 
 from fastapi import APIRouter, HTTPException

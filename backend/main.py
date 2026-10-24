@@ -10,8 +10,6 @@
 #   - Initialize FastAPI
 #   - Register GitHub and workspace routes
 #   - Provide application health-check endpoints
-#
-# Team: Member 2 - Backend & GitHub Integration
 # ============================================================
 
 from fastapi import FastAPI
@@ -19,6 +17,7 @@ from fastapi import FastAPI
 # Import routers from the routes directory
 from routes.repositories import router as repositories_router
 from routes.workspaces import router as workspaces_router
+from routes.migrations import router as migrations_router
 
 
 # Initialize the FastAPI application
@@ -35,6 +34,7 @@ app.include_router(repositories_router)
 # Register repository workspace endpoints
 app.include_router(workspaces_router)
 
+app.include_router(migrations_router)
 
 @app.get("/")
 def root():

@@ -1,0 +1,7 @@
+Example fictional API changelog for testing API Guardian.
+
+Version 2.0:
+- BREAKING: The `create_charge(amount, currency)` method has been removed.
+- Use `create_payment(amount_minor_units, currency_code)` instead.
+- `amount_minor_units` must be an integer amount in the smallest currency unit.
+- The new method returns a Payment object instead of a Charge object.
