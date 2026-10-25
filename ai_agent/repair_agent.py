@@ -59,7 +59,7 @@ def repair_migration(
 
     selected_model = model or os.getenv(
         "OLLAMA_MODEL",
-        "qwen2.5:latest"
+        "gemma3:4b"
     )
 
     payload = {

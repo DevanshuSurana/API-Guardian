@@ -541,7 +541,7 @@ sequenceDiagram
 
 - Python 3.10 or later
 - Git installed and available in `PATH`
-- Ollama installed and running, with `qwen2.5:latest` available by default
+- Ollama installed and running, with `gemma3:4b` available by default
 - A GitHub account
 - A GitHub personal access token for authenticated GitHub operations
 
@@ -591,14 +591,14 @@ Set the local Ollama model and host in the shell before starting the backend.
 macOS/Linux:
 
 ```bash
-export OLLAMA_MODEL=qwen2.5:latest
+export OLLAMA_MODEL=gemma3:4b
 export OLLAMA_HOST=http://localhost:11434
 ```
 
 Windows PowerShell:
 
 ```powershell
-$env:OLLAMA_MODEL="qwen2.5:latest"
+$env:OLLAMA_MODEL="gemma3:4b"
 $env:OLLAMA_HOST="http://localhost:11434"
 ```
 

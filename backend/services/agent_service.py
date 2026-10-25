@@ -8,7 +8,6 @@ import re
 import time
 
 from git import Repo
-
 from models.schemas import (
     APIFinding,
     APIUsage,
@@ -18,6 +17,7 @@ from models.schemas import (
     MigrationRequest,
     MigrationResponse,
 )
+
 from services.ai_integration_service import (
     analyze_source_with_ai,
     audit_source_for_api_issues,
@@ -218,7 +218,7 @@ def _analyze_repository(request: MigrationRequest) -> MigrationResponse:
             affected_file_count=len(result.affected_files),
             status=result.status,
             duration_seconds=time.perf_counter() - started_at,
-            model=os.getenv("OLLAMA_MODEL", "qwen2.5:latest"),
+            model=os.getenv("OLLAMA_MODEL", "gemma3:4b"),
             file_paths=[change.file_path for change in result.affected_files],
         )
         return result

@@ -3,7 +3,6 @@ import subprocess
 
 import pytest
 from fastapi import HTTPException
-
 from routes import mlops
 
 
@@ -22,6 +21,7 @@ def test_status_reports_dvc_from_the_running_virtual_environment(tmp_path, monke
 
     status = mlops.mlops_status()
 
+    assert status["ollama_model"] == "gemma3:4b"
     assert status["dvc_available"] is True
     assert status["dvc_version"] == "3.0.0"
     assert status["evaluation_config_available"] is True

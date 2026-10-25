@@ -23,7 +23,7 @@
     <div class="top-meta"><span class="pill"><i class="dot" id="apiDot"></i>API <span id="apiState">checking</span></span><span class="pill"><i class="dot" id="mlflowDot"></i>MLflow <span id="mlflowState">checking</span></span><span class="pill"><i class="dot" id="dvcDot"></i>DVC <span id="dvcState">checking</span></span></div>
   </header>
   <main>
-    <div class="intro"><div><div class="eyebrow">Self-maintaining API workspace</div><h1>Scan. Detect. Repair.</h1><p>Give API Guardian a GitHub repository. It discovers API clients and dependencies, audits likely compatibility issues, and proposes reviewable fixes.</p></div><div class="model-tag">Local model · <b>qwen2.5:latest</b></div></div>
+    <div class="intro"><div><div class="eyebrow">Self-maintaining API workspace</div><h1>Scan. Detect. Repair.</h1><p>Give API Guardian a GitHub repository. It discovers API clients and dependencies, audits likely compatibility issues, and proposes reviewable fixes.</p></div><div class="model-tag">Local model · <b id="ollamaModel">gemma3:4b</b></div></div>
     <div class="layout">
       <section class="card">
         <div class="card-head"><div><h2>Repository audit</h2><p>Public repositories are cloned to a temporary workspace.</p></div><span class="badge neutral">Proposal only</span></div>
@@ -85,6 +85,7 @@
         .catch(() => setStatus('api', false, 'offline'));
       const mlops = api('/api/mlops/status')
         .then((status) => {
+          $('ollamaModel').textContent = status.ollama_model || 'gemma3:4b';
           setStatus('mlflow', status.mlflow_available, status.mlflow_available ? 'ready' : 'install');
           const dvcReady = status.dvc_available && status.evaluation_config_available;
           setStatus(

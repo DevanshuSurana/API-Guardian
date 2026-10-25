@@ -12,7 +12,6 @@ from typing import Any
 
 import yaml
 from fastapi import APIRouter, HTTPException
-
 from services.mlflow_service import latest_runs, log_dvc_evaluation
 
 router = APIRouter(prefix="/api/mlops", tags=["MLOps"])
@@ -34,6 +33,7 @@ def mlops_status() -> dict[str, Any]:
     dvc_executable = _find_dvc_executable()
     evaluation, config_error = _evaluation_config()
     return {
+        "ollama_model": os.getenv("OLLAMA_MODEL", "gemma3:4b"),
         "mlflow_available": mlflow_available,
         "mlflow_version": mlflow_version,
         "dvc_available": dvc_executable is not None,

@@ -410,7 +410,7 @@ def generate_migration(
         raise ValueError("source_code cannot be empty")
 
     host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
-    selected_model = model or os.getenv("OLLAMA_MODEL", "qwen2.5:latest")
+    selected_model = model or os.getenv("OLLAMA_MODEL", "gemma3:4b")
 
     user_payload = {
         "changelog": changelog,
@@ -565,7 +565,7 @@ def audit_api_source(
         return {"api_detected": False, "api_usages": [], "findings": []}
 
     host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
-    selected_model = model or os.getenv("OLLAMA_MODEL", "qwen2.5:latest")
+    selected_model = model or os.getenv("OLLAMA_MODEL", "gemma3:4b")
     system_prompt = """You are API Guardian, a careful API compatibility auditor.
 Inspect a repository source file and the supplied dependency manifests.
 Identify concrete use of external APIs, SDKs, HTTP endpoints, or service clients.

@@ -16,7 +16,7 @@ The agent analyzes an API changelog and source code, identifies potential breaki
 
 - Python 3.10 or newer
 - [Ollama](https://ollama.com/) installed and running
-- The `qwen2.5:latest` model downloaded, or another compatible model
+- The `gemma3:4b` model downloaded, or another compatible model
 - No internet connection is required for model inference after the model is downloaded
 
 ## 2. Setup
@@ -37,7 +37,7 @@ Install Ollama from https://ollama.com/ if it is not already installed.
 Download the default model:
 
 ```bash
-ollama pull qwen2.5:latest
+ollama pull gemma3:4b
 ```
 
 Make sure the Ollama service is running. Depending on your installation, you may need to open the Ollama app or run:
@@ -60,7 +60,7 @@ python -m pip install -r requirements.txt
 Install Ollama from https://ollama.com/, then run:
 
 ```powershell
-ollama pull qwen2.5:latest
+ollama pull gemma3:4b
 ```
 
 Make sure the Ollama service is running before starting the agent.
@@ -70,21 +70,21 @@ Make sure the Ollama service is running before starting the agent.
 The default configuration is:
 
 - Ollama host: `http://localhost:11434`
-- Model: `qwen2.5:latest`
+- Model: `gemma3:4b`
 
 To use a different compatible local model, set `OLLAMA_MODEL`.
 
 macOS / Linux:
 
 ```bash
-export OLLAMA_MODEL="qwen2.5:latest"
+export OLLAMA_MODEL="gemma3:4b"
 export OLLAMA_HOST="http://localhost:11434"
 ```
 
 Windows PowerShell:
 
 ```powershell
-$env:OLLAMA_MODEL="qwen2.5:latest"
+$env:OLLAMA_MODEL="gemma3:4b"
 $env:OLLAMA_HOST="http://localhost:11434"
 ```
 
