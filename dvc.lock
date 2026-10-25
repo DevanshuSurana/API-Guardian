@@ -1,0 +1,28 @@
+schema: '2.0'
+stages:
+  evaluate:
+    cmd: python -m mlops.evaluation.evaluate --dataset
+      datasets/api_changes/api_changes.jsonl --output
+      mlops/evaluation/reports/latest.json --no-mlflow
+    deps:
+    - path: datasets/api_changes/api_changes.jsonl
+      hash: md5
+      md5: 3b1be56f06a0217c40d220c11a0452f8
+      size: 4683
+    - path: mlops/evaluation/evaluate.py
+      hash: md5
+      md5: a2b0e92dedcb8b762d5e3fada877c140
+      size: 4906
+    - path: mlops/metrics.py
+      hash: md5
+      md5: f640cee668dd2583d56224bb10995d5c
+      size: 1803
+    params:
+      params.yaml:
+        evaluation.dataset: datasets/api_changes/api_changes.jsonl
+        evaluation.report: mlops/evaluation/reports/latest.json
+    outs:
+    - path: mlops/evaluation/reports/latest.json
+      hash: md5
+      md5: f5e08a6cec635da4d987f59314f5ad82
+      size: 2474

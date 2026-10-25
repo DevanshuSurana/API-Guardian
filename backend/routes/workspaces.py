@@ -12,20 +12,16 @@
 #   - Clone public repositories
 #   - Return supported source file paths
 #   - Clean up temporary files
-#
-# Team: Member 2 - Backend & GitHub Integration
 # ============================================================
 
 from fastapi import APIRouter, HTTPException
-
 from git import GitCommandError
 
 from services.repository_service import (
+    cleanup_workspace,
     clone_repository,
     list_source_files,
-    cleanup_workspace
 )
-
 
 # Create a router for workspace-related operations
 router = APIRouter(

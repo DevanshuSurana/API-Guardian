@@ -1,0 +1,12 @@
+stages:
+  evaluate:
+    cmd: python -m mlops.evaluation.evaluate --dataset datasets/api_changes/api_changes.jsonl --output mlops/evaluation/reports/latest.json --no-mlflow
+    deps:
+      - mlops/metrics.py
+      - mlops/evaluation/evaluate.py
+      - datasets/api_changes/api_changes.jsonl
+    params:
+      - evaluation.dataset
+      - evaluation.report
+    outs:
+      - mlops/evaluation/reports/latest.json

@@ -1,4 +1,19 @@
+.DS_Store
+.env
+.env.*
+!.env.example
 .venv/
 __pycache__/
 *.pyc
-.env
+*.py[cod]
+mlruns/
+.dvc/cache/
+mlops/evaluation/reports/
+.pytest_cache/
+
+# Generated Python and experiment artifacts
+*.egg-info/
+mlflow.db
+scan-history.db
+scan-history.db-shm
+scan-history.db-wal

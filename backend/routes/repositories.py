@@ -12,15 +12,12 @@
 #   - Call the GitHub service
 #   - Return repository information as JSON
 #   - Handle GitHub API errors
-#
-# Team: Member 2 - Backend & GitHub Integration
 # ============================================================
 
 import httpx
-
 from fastapi import APIRouter, HTTPException
-from services.github_service import get_repository
 
+from services.github_service import get_repository
 
 # Create a router for repository-related endpoints
 router = APIRouter(
