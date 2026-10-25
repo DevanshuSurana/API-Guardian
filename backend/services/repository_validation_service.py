@@ -1,14 +1,11 @@
-
 """Validate AI-generated patches against complete repository files."""
 
-from pathlib import Path
-
 from models.schemas import FileChange
-from services.patch_service import prepare_patch, PatchError
 from services.code_validation_service import (
-    validate_generated_python,
     CodeValidationError,
+    validate_generated_python,
 )
+from services.patch_service import PatchError, prepare_patch
 
 
 def validate_repository_change(

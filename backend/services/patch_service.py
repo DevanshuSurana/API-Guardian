@@ -8,9 +8,10 @@
 #   and apply approved patches to temporary repository files.
 # ============================================================
 
-from pathlib import Path
-import difflib
 import ast
+import difflib
+from pathlib import Path
+
 from models.schemas import FileChange
 
 

@@ -1,4 +1,3 @@
-
 # ============================================================
 # API Guardian - Self-Healing Repair Orchestrator
 # File: backend/services/repair_orchestrator.py
@@ -8,13 +7,12 @@
 #   migrations using an injected repair function.
 # ============================================================
 
-from typing import Callable
+from collections.abc import Callable
 
 from models.schemas import FileChange
-
 from services.code_validation_service import (
-    validate_generated_python,
     CodeValidationError,
+    validate_generated_python,
 )
 from services.repository_validation_service import (
     validate_repository_change,
@@ -41,15 +39,12 @@ def run_repair_loop(
     """
 
     if max_attempts < 1:
-        raise ValueError(
-            "max_attempts must be at least 1."
-        )
+        raise ValueError("max_attempts must be at least 1.")
 
     current_change = initial_change
     history = []
 
     for attempt in range(1, max_attempts + 1):
-
         try:
             if repository_path is not None:
                 validation = validate_repository_change(
@@ -71,11 +66,13 @@ def run_repair_loop(
                 )
 
             # Step 2: Record successful validation.
-            history.append({
-                "attempt": attempt,
-                "status": "passed",
-                "validation": validation,
-            })
+            history.append(
+                {
+                    "attempt": attempt,
+                    "status": "passed",
+                    "validation": validation,
+                }
+            )
 
             # Step 3: Return the validated proposal.
             return {
@@ -86,15 +83,16 @@ def run_repair_loop(
             }
 
         except CodeValidationError as error:
-
             # Step 4: Record validation failure.
             error_message = str(error)
 
-            history.append({
-                "attempt": attempt,
-                "status": "failed",
-                "error": error_message,
-            })
+            history.append(
+                {
+                    "attempt": attempt,
+                    "status": "failed",
+                    "error": error_message,
+                }
+            )
 
             # Step 5: Stop when retry limit is reached.
             if attempt == max_attempts:
@@ -109,15 +107,12 @@ def run_repair_loop(
             # Step 7: Prevent repair agent from changing
             # the target file or original source.
             if (
-                current_change.file_path
-                != initial_change.file_path
-                or current_change.original_code
-                != initial_change.original_code
+                current_change.file_path != initial_change.file_path
+                or current_change.original_code != initial_change.original_code
             ):
                 raise ValueError(
-                    "Repair agent changed the original "
-                    "file identity or source code."
-                )
+                    "Repair agent changed the original file identity or source code."
+                ) from None
 
     return {
         "status": "failed",

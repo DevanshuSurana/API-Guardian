@@ -15,10 +15,9 @@
 # ============================================================
 
 import httpx
-
 from fastapi import APIRouter, HTTPException
-from services.github_service import get_repository
 
+from services.github_service import get_repository
 
 # Create a router for repository-related endpoints
 router = APIRouter(

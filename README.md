@@ -24,7 +24,7 @@ macOS/Linux:
 ```bash
 python3.13 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements-mlops.txt
+python -m pip install -r requirements-mlops.txt -r backend/requirements-dev.txt
 python -m pip install -e .
 ```
 
@@ -33,7 +33,7 @@ Windows PowerShell:
 ```powershell
 py -3.13 -m venv .venv
 .venv\Scripts\Activate.ps1
-python -m pip install -r requirements-mlops.txt
+python -m pip install -r requirements-mlops.txt -r backend/requirements-dev.txt
 python -m pip install -e .
 ```
 
@@ -46,6 +46,10 @@ Run the unit tests:
 ```bash
 python -m pytest -q
 ```
+
+This runs the MLOps, backend, and AI-agent unit tests from the repository root.
+Tests marked `integration` are skipped because they require local Ollama or
+external GitHub access.
 
 Run the bundled fixture evaluation without MLflow:
 

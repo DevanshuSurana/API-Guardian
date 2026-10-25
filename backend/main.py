@@ -12,13 +12,15 @@
 #   - Provide application health-check endpoints
 # ============================================================
 
-from fastapi import FastAPI
+from pathlib import Path
 
-# Import routers from the routes directory
+from fastapi import FastAPI
+from fastapi.responses import FileResponse, RedirectResponse
+
+from routes.migrations import router as migrations_router
+from routes.mlops import router as mlops_router
 from routes.repositories import router as repositories_router
 from routes.workspaces import router as workspaces_router
-from routes.migrations import router as migrations_router
-
 
 # Initialize the FastAPI application
 app = FastAPI(
@@ -35,6 +37,29 @@ app.include_router(repositories_router)
 app.include_router(workspaces_router)
 
 app.include_router(migrations_router)
+app.include_router(mlops_router)
+
+
+@app.get("/ui", include_in_schema=False)
+def interactive_ui():
+    """Serve the local interactive dashboard."""
+    return FileResponse(Path(__file__).parent / "static" / "index.html")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    """Serve a favicon for browsers that request the conventional path."""
+    return RedirectResponse("/favicon.svg")
+
+
+@app.get("/favicon.svg", include_in_schema=False)
+def favicon_svg():
+    """Serve the dashboard's vector favicon."""
+    return FileResponse(
+        Path(__file__).parent / "static" / "favicon.svg",
+        media_type="image/svg+xml",
+    )
+
 
 @app.get("/")
 def root():

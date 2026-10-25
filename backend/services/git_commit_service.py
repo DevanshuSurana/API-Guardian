@@ -1,4 +1,3 @@
-
 # ============================================================
 # API Guardian - Git Commit Preparation Service
 # File: backend/services/git_commit_service.py
@@ -16,10 +15,10 @@
 from pathlib import Path
 from typing import Any
 
-from git import Repo, InvalidGitRepositoryError
+from git import Repo
 
 from services.patch_service import validate_file_path
-from git import GitCommandError
+
 
 def prepare_git_commit(
     repository_path: str,
@@ -44,21 +43,15 @@ def prepare_git_commit(
     repository = Repo(repository_path)
 
     if repository.bare:
-        raise ValueError(
-            "Cannot prepare a commit in a bare repository."
-        )
+        raise ValueError("Cannot prepare a commit in a bare repository.")
 
     # Step 2: Validate the commit message.
     if not commit_message.strip():
-        raise ValueError(
-            "Commit message cannot be empty."
-        )
+        raise ValueError("Commit message cannot be empty.")
 
     # Step 3: Require at least one changed file.
     if not changed_files:
-        raise ValueError(
-            "Cannot prepare a commit without changed files."
-        )
+        raise ValueError("Cannot prepare a commit without changed files.")
 
     # Step 4: Validate that all requested files exist
     # inside the repository and are safe to access.
@@ -71,29 +64,21 @@ def prepare_git_commit(
         )
 
         # Convert the validated path into a repository-relative path.
-        relative_path = target.relative_to(
-            Path(repository_path).resolve()
-        ).as_posix()
+        relative_path = target.relative_to(Path(repository_path).resolve()).as_posix()
 
         if relative_path not in validated_files:
             validated_files.append(relative_path)
 
     # Step 5: Identify actual tracked modifications.
-    modified_files = set(
-        repository.git.diff("--name-only").splitlines()
-    )
+    modified_files = set(repository.git.diff("--name-only").splitlines())
 
     # Only include files with real working-tree changes.
     files_to_commit = [
-        file_path
-        for file_path in validated_files
-        if file_path in modified_files
+        file_path for file_path in validated_files if file_path in modified_files
     ]
 
     if not files_to_commit:
-        raise ValueError(
-            "No modified tracked files found to commit."
-        )
+        raise ValueError("No modified tracked files found to commit.")
 
     # Step 6: Generate a diff for the selected files.
     diff = repository.git.diff(
@@ -110,6 +95,7 @@ def prepare_git_commit(
         "diff": diff,
         "status": "commit_plan_prepared",
     }
+
 
 # ============================================================
 # API Guardian - Local Git Commit Execution
@@ -146,47 +132,45 @@ def create_local_migration_commit(
     branch_name = repository.active_branch.name
 
     if not branch_name.startswith("api-guardian/migration-"):
-        raise ValueError(
-            "Commits are only allowed on API Guardian migration branches."
-        )
+        raise ValueError("Commits are only allowed on API Guardian migration branches.")
 
     # Step 3: Require a clean staging area.
     # This prevents unrelated staged files from entering the commit.
     if repository.git.diff("--cached", "--name-only").strip():
-        raise ValueError(
-            "Cannot commit: the Git staging area is not empty."
-        )
+        raise ValueError("Cannot commit: the Git staging area is not empty.")
 
     # Step 4: Stage only the validated files.
     files_to_commit = commit_plan["files"]
 
     repository.git.add("--", *files_to_commit)
 
-    
     # Step 5: Create a real Git commit locally.
     # Use GitPython's execute() to pass Git command arguments.
     # This does not push anything to GitHub.
 
-    repository.git.execute([
-        "git",
-        "-c", "user.name=API Guardian",
-        "-c", "user.email=api-guardian@users.noreply.github.com",
-        "-c", "core.hooksPath=/dev/null",
-        "commit",
-        "-m", commit_message.strip(),
-        "--only",
-        "--",
-        *files_to_commit,
-    ])
-
+    repository.git.execute(
+        [
+            "git",
+            "-c",
+            "user.name=API Guardian",
+            "-c",
+            "user.email=api-guardian@users.noreply.github.com",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "commit",
+            "-m",
+            commit_message.strip(),
+            "--only",
+            "--",
+            *files_to_commit,
+        ]
+    )
 
     # Step 6: Read the newly created commit.
     commit = repository.head.commit
 
     # Step 7: Verify the files actually included in the commit.
-    committed_files = sorted(
-        commit.stats.files.keys()
-    )
+    committed_files = sorted(commit.stats.files.keys())
 
     expected_files = sorted(files_to_commit)
 

@@ -14,7 +14,7 @@ import tempfile
 from pathlib import Path
 
 from models.schemas import FileChange
-from services.patch_service import generate_diff, apply_patch
+from services.patch_service import apply_patch, generate_diff
 
 
 def test_patch():

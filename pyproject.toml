@@ -13,5 +13,9 @@ include = ["mlops*"]
 exclude = ["datasets*", "tests*"]
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
-testpaths = ["tests"]
+pythonpath = [".", "backend", "ai_agent"]
+testpaths = ["tests", "backend/tests", "ai_agent/tests"]
+addopts = ["-m", "not integration"]
+markers = [
+    "integration: requires a running local Ollama service or external GitHub access",
+]

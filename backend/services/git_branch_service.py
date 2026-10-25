@@ -1,4 +1,3 @@
-
 # ============================================================
 # API Guardian - Git Branch Service
 # File: backend/services/git_branch_service.py
@@ -13,14 +12,15 @@
 # Team: Member 2 - Backend & GitHub Integration
 # ============================================================
 
-from pathlib import Path
+import re
 from uuid import uuid4
 
-from git import Repo, InvalidGitRepositoryError
+from git import Repo
 
 
 def create_migration_branch(
-    repository_path: str
+    repository_path: str,
+    branch_name: str | None = None,
 ) -> str:
     """
     Create and switch to a new local migration branch.
@@ -30,10 +30,10 @@ def create_migration_branch(
 
     repository = Repo(repository_path)
 
-    # Generate a unique branch name for this migration.
-    branch_name = (
-        f"api-guardian/migration-{uuid4().hex[:12]}"
-    )
+    # Generate a unique branch name unless a review workflow supplied one.
+    branch_name = branch_name or f"api-guardian/migration-{uuid4().hex[:12]}"
+    if not re.fullmatch(r"api-guardian/migration-[a-zA-Z0-9_-]+", branch_name):
+        raise ValueError("Invalid API Guardian migration branch name.")
 
     # Create the branch from the cloned repository's HEAD.
     repository.git.checkout("-b", branch_name)
@@ -41,9 +41,7 @@ def create_migration_branch(
     return branch_name
 
 
-def generate_git_diff(
-    repository_path: str
-) -> str:
+def generate_git_diff(repository_path: str) -> str:
     """
     Generate the Git diff for modified tracked files.
 
@@ -56,9 +54,7 @@ def generate_git_diff(
     return repository.git.diff()
 
 
-def get_changed_files(
-    repository_path: str
-) -> list[str]:
+def get_changed_files(repository_path: str) -> list[str]:
     """
     Return tracked files modified in the working directory.
 

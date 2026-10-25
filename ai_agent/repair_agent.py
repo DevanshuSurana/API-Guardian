@@ -129,7 +129,7 @@ def repair_migration(
         ) from error
 
     if not isinstance(result, dict):
-        raise ValueError("Repair response must be an object.")
+        raise TypeError("Repair response must be an object.")
 
     for key in ("updated_code", "explanation"):
         if (

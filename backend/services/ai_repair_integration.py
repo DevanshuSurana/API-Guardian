@@ -7,7 +7,6 @@ from pathlib import Path
 from models.schemas import FileChange
 from services.repair_orchestrator import run_repair_loop
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 AI_AGENT_DIRECTORY = PROJECT_ROOT / "ai_agent"
 
@@ -18,6 +17,7 @@ if str(AI_AGENT_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(AI_AGENT_DIRECTORY))
 
 from repair_agent import repair_migration
+
 
 def run_ai_repair(
     changelog: str,

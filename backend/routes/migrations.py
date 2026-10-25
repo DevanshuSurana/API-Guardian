@@ -7,10 +7,16 @@
 #   Expose endpoints for AI-powered API migration analysis.
 # ============================================================
 
+import asyncio
+
 from fastapi import APIRouter, HTTPException
 from git.exc import GitCommandError
+
 from models.schemas import (
     BatchApplyResponse,
+    FixProposalRequest,
+    FixProposalResponse,
+    GitHubPublishResponse,
     LocalCommitResponse,
     MigrationPlanRequest,
     MigrationPlanResponse,
@@ -21,9 +27,13 @@ from models.schemas import (
     PatchPreviewResponse,
     PreparePullRequestRequest,
     PreparePullRequestResponse,
+    PublishApprovalRequest,
     PublishDryRunResponse,
+    PublishReviewResponse,
+    PublishStatusResponse,
 )
-from services.agent_service import analyze_migration
+from services.agent_service import analyze_migration, generate_finding_fix
+from services.github_publish_executor import PublishingError
 from services.migration_service import (
     apply_migration_batch,
     create_migration_plan,
@@ -34,6 +44,11 @@ from services.migration_service import (
     preview_migration,
 )
 from services.patch_service import PatchError
+from services.publish_review_service import (
+    approve_and_publish,
+    get_publish_status,
+    prepare_publish_review,
+)
 
 # Group migration-related endpoints together
 router = APIRouter(
@@ -81,6 +96,24 @@ async def analyze_api_migration(
     return result
 
 
+@router.post("/fix", response_model=FixProposalResponse)
+async def generate_api_finding_fix(request: FixProposalRequest):
+    """Generate a validated Python patch for one selected API finding."""
+    try:
+        return await asyncio.to_thread(generate_finding_fix, request)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except PatchError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except GitCommandError as error:
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to clone the requested repository for fix generation.",
+        ) from error
+    except RuntimeError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+
 # ============================================================
 # Endpoint: Preview API Migration
 #
@@ -113,7 +146,8 @@ def preview_api_migration(
             status_code=400,
             detail=str(error),
         ) from error
-
+    except PatchError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     except GitCommandError as error:
         raise HTTPException(
             status_code=502,
@@ -155,13 +189,8 @@ def apply_api_migration(
             status_code=400,
             detail=str(error),
         ) from error
-
     except PatchError as error:
-        raise HTTPException(
-            status_code=422,
-            detail=str(error),
-        ) from error
-
+        raise HTTPException(status_code=422, detail=str(error)) from error
     except GitCommandError as error:
         raise HTTPException(
             status_code=502,
@@ -205,19 +234,6 @@ def prepare_api_migration(
             detail=str(error),
         ) from error
 
-    except PatchError as error:
-        raise HTTPException(
-            status_code=422,
-            detail=str(error),
-        ) from error
-
-    except GitCommandError as error:
-        raise HTTPException(
-            status_code=502,
-            detail="Unable to prepare the Git repository.",
-        ) from error
-
-
 # ============================================================
 # API Guardian - Prepare Pull Request Endpoint
 # File: backend/routes/migrations.py
@@ -253,19 +269,6 @@ def prepare_pull_request_endpoint(
             status_code=400,
             detail=str(error),
         ) from error
-
-    except PatchError as error:
-        raise HTTPException(
-            status_code=422,
-            detail=str(error),
-        ) from error
-
-    except GitCommandError as error:
-        raise HTTPException(
-            status_code=502,
-            detail="Unable to prepare the Git repository.",
-        ) from error
-
 
 # ============================================================
 # API Guardian - Complete Migration Plan Endpoint
@@ -350,17 +353,52 @@ def publish_migration_dry_run(
             status_code=400,
             detail=str(error),
         ) from error
-
     except PatchError as error:
-        raise HTTPException(
-            status_code=422,
-            detail=str(error),
-        ) from error
-
+        raise HTTPException(status_code=422, detail=str(error)) from error
     except GitCommandError as error:
         raise HTTPException(
             status_code=502,
-            detail="Unable to prepare the Git repository.",
+            detail="Unable to prepare the publishing dry run.",
+        ) from error
+
+
+@router.get("/publish/status", response_model=PublishStatusResponse)
+def publish_status(repository: str | None = None):
+    """Report whether a repository can be published to; never returns secrets."""
+    return get_publish_status(repository)
+
+
+@router.post("/publish/prepare", response_model=PublishReviewResponse)
+def prepare_reviewed_publish(request: MigrationPlanRequest):
+    """Build an immutable diff for review; this endpoint performs no remote writes."""
+    try:
+        return prepare_publish_review(request)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except PatchError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except GitCommandError as error:
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to prepare the migration review.",
+        ) from error
+
+
+@router.post("/publish/approve", response_model=GitHubPublishResponse)
+async def publish_approved_review(approval: PublishApprovalRequest):
+    """Push a reviewed migration branch and create a draft pull request."""
+    try:
+        return await approve_and_publish(approval)
+    except PublishingError as error:
+        message = str(error)
+        status_code = 409 if "expired" in message or "changed" in message or "match" in message else 403
+        raise HTTPException(status_code=status_code, detail=message) from error
+    except ValueError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    except GitCommandError as error:
+        raise HTTPException(
+            status_code=502,
+            detail="GitHub publishing failed while preparing the migration branch.",
         ) from error
 
 

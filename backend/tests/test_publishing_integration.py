@@ -13,12 +13,12 @@ import asyncio
 
 import pytest
 
-from models.schemas import MigrationPlanRequest, FileChange
-from services.migration_service import (
-    prepare_publish_dry_run,
-    execute_github_migration,
-)
+from models.schemas import FileChange, MigrationPlanRequest
 from services.github_publish_executor import PublishingError
+from services.migration_service import (
+    execute_github_migration,
+    prepare_publish_dry_run,
+)
 
 
 def build_test_request():
@@ -48,15 +48,17 @@ def build_test_request():
 
 
 @pytest.mark.integration
-async def test_unauthorized_publishing():
+def test_unauthorized_publishing():
     """Ensure unauthorized publishing is rejected."""
 
     request = build_test_request()
 
     try:
-        await execute_github_migration(
-            request,
-            authorized=False,
+        asyncio.run(
+            execute_github_migration(
+                request,
+                authorized=False,
+            )
         )
     except PublishingError:
         print("Unauthorized publishing correctly blocked.")

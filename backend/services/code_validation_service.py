@@ -11,8 +11,10 @@ import ast
 import builtins
 import json
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
+
 
 def find_unresolved_names(source_code: str) -> list[str]:
     """
@@ -108,6 +110,8 @@ def validate_generated_python(
         try:
             result = subprocess.run(
                 [
+                    sys.executable,
+                    "-m",
                     "ruff",
                     "check",
                     "--isolated",

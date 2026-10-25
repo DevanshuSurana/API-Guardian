@@ -9,25 +9,20 @@
 # ============================================================
 
 import pytest
-
 from git import Repo
 
 from models.schemas import FileChange
-
-from services.repository_service import (
-    clone_repository,
-    cleanup_workspace,
-)
-
+from services.batch_patch_service import apply_batch
 from services.git_branch_service import (
     create_migration_branch,
     get_changed_files,
 )
-
-from services.batch_patch_service import apply_batch
-
 from services.git_commit_service import (
     create_local_migration_commit,
+)
+from services.repository_service import (
+    cleanup_workspace,
+    clone_repository,
 )
 
 

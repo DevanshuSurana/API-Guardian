@@ -8,15 +8,18 @@
 # Python: 3.10+
 # ============================================================
 
-from pydantic import BaseModel, Field
-
 from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 class MigrationRequest(BaseModel):
-    owner: str
-    repo: str
-    changelog: str = Field(min_length=1)
+    owner: str | None = None
+    repo: str | None = None
+    repo_url: str | None = None
+    changelog: str = ""
+    branch: str | None = None
+    all_branches: bool = True
 
 
 class FileChange(BaseModel):
@@ -24,6 +27,26 @@ class FileChange(BaseModel):
     original_code: str
     updated_code: str
     explanation: str
+    branch: str | None = None
+
+
+class APIUsage(BaseModel):
+    file_path: str
+    branch: str
+    provider: str
+    evidence: str
+    dependency_version: str | None = None
+
+
+class APIFinding(BaseModel):
+    file_path: str
+    branch: str
+    severity: str
+    title: str
+    evidence: str
+    explanation: str
+    recommendation: str
+    proposed_code: str | None = None
 
 
 class MigrationResponse(BaseModel):
@@ -31,6 +54,29 @@ class MigrationResponse(BaseModel):
     breaking_change: bool
     affected_files: list[FileChange]
     summary: str
+    status: str
+    branches_scanned: list[str] = Field(default_factory=list)
+    api_detected: bool = False
+    api_usages: list[APIUsage] = Field(default_factory=list)
+    findings: list[APIFinding] = Field(default_factory=list)
+    mlflow_run_id: str | None = None
+
+
+class FixProposalRequest(MigrationRequest):
+    """Ask the repair agent to address one specific audit finding."""
+
+    file_path: str = Field(min_length=1)
+    finding_title: str = Field(min_length=1)
+    problem: str = Field(min_length=1)
+    recommendation: str = Field(min_length=1)
+
+
+class FixProposalResponse(BaseModel):
+    """A validated code proposal and its local diff."""
+
+    change: FileChange
+    changes: list[FileChange] = Field(default_factory=list)
+    diff: str
     status: str
 
 
@@ -187,6 +233,7 @@ class MigrationPlanResponse(BaseModel):
     commit_plan: dict
     pull_request: dict
     status: str
+    base_commit_sha: str | None = None
 
 # ============================================================
 # API Guardian - Publishing Dry-Run Response Schema
@@ -212,6 +259,53 @@ class PublishDryRunResponse(BaseModel):
     pull_request: dict[str, Any]
     operations: list[dict[str, Any]]
     remote_writes_enabled: bool
+    status: str
+
+
+class PublishStatusResponse(BaseModel):
+    """GitHub write readiness without exposing credentials."""
+
+    repository: str | None = None
+    repository_approved: bool
+    token_configured: bool
+    remote_writes_enabled: bool
+    publish_ready: bool
+    readiness_issues: list[str] = Field(default_factory=list)
+
+
+class PublishReviewResponse(BaseModel):
+    """An immutable, expiring code diff prepared for user review."""
+
+    review_id: str
+    repository: str
+    branch_name: str
+    base_branch: str
+    base_commit_sha: str
+    changed_files: list[str]
+    diff: str
+    pull_request: dict[str, Any]
+    publish_ready: bool
+    readiness_issues: list[str] = Field(default_factory=list)
+    expires_in_seconds: int
+    status: str
+
+
+class PublishApprovalRequest(BaseModel):
+    """Explicit approval for one prepared review."""
+
+    review_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+    approved: bool
+
+
+class GitHubPublishResponse(BaseModel):
+    """Result of publishing a reviewed branch and draft pull request."""
+
+    repository: str
+    branch_name: str
+    commit_hash: str
+    branch_status: str
+    pull_request_number: int
+    pull_request_url: str
     status: str
 
 # ============================================================

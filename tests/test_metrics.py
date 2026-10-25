@@ -1,5 +1,6 @@
 from mlops.metrics import detection_metrics, patch_metrics
 
+
 def test_detection_metrics():
     result = detection_metrics([True, True, False, False], [True, False, True, False])
     assert result["true_positives"] == 1

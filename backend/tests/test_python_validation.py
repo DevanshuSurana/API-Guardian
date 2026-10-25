@@ -1,7 +1,7 @@
 
 from services.patch_service import (
-    validate_python_syntax,
     PatchError,
+    validate_python_syntax,
 )
 
 # Valid Python

@@ -7,7 +7,6 @@ import pytest
 from models.schemas import FileChange
 from services.ai_repair_integration import run_ai_repair
 
-
 changelog = """
 Payment API v2:
 process_payment(amount) has been removed.

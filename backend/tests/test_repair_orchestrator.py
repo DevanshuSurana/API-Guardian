@@ -1,8 +1,6 @@
 
 from models.schemas import FileChange
-
 from services.repair_orchestrator import run_repair_loop
-
 
 # AI-generated code with a missing import.
 initial_change = FileChange(

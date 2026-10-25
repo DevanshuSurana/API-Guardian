@@ -1,8 +1,8 @@
 # API Guardian — Backend & GitHub Integration
 
-**AI-Powered API Migration Automation**
+**Self-Maintaining API Discovery and Migration Assistant**
 
-API Guardian helps developers identify and migrate deprecated or breaking third-party API usages in their GitHub repositories. It combines AI-generated migration suggestions with backend validation, Git operations, and GitHub pull-request automation.
+API Guardian accepts a GitHub repository link, discovers API clients and dependency versions, audits source call sites for likely compatibility issues, and proposes reviewable fixes. A changelog is optional for targeted migration analysis.
 
 This directory contains the **FastAPI backend and GitHub integration layer**, developed as Member 2's responsibility.
 
@@ -14,9 +14,9 @@ Third-party APIs frequently introduce breaking changes, deprecate methods, or mo
 
 API Guardian aims to automate this process:
 
-1. Identify relevant API breaking changes.
-2. Analyze a repository for affected API usages.
-3. Generate proposed code modifications.
+1. Identify API clients and dependency versions in a repository.
+2. Analyze source call sites for likely compatibility issues.
+3. Generate evidence-backed findings and proposed code modifications.
 4. Validate the proposed modifications.
 5. Preview and apply changes in an isolated workspace.
 6. Create a dedicated Git migration branch.
@@ -323,22 +323,24 @@ Interactive documentation:
 | POST | `/api/migrations/plan` | Generate a complete migration plan |
 | POST | `/api/migrations/publish/dry-run` | Preview GitHub publishing operations |
 | POST | `/api/migrations/commit/local` | Create a temporary local migration commit |
+| GET | `/api/mlops/status` | Check local MLflow and DVC availability |
+| GET | `/api/mlops/runs` | List recent MLflow runs |
+| POST | `/api/mlops/dvc/repro` | Reproduce the DVC fixture-baseline evaluation |
 
 The publishing executor is currently a service function and is **not exposed as a public publishing endpoint**.
 
 ### Example: Analyze a repository with the local agent
 
-Send this JSON body to `POST /api/migrations/analyze`:
+Send a repository URL to `POST /api/migrations/analyze`:
 
 ```json
 {
-  "owner": "example-owner",
-  "repo": "example-repository",
-  "changelog": "client.old_call() was removed. Use client.new_call() instead."
+  "repo_url": "https://github.com/example-owner/example-repository",
+  "all_branches": true
 }
 ```
 
-The endpoint clones the public repository into a temporary workspace, analyzes supported source files with Ollama, returns proposed changes, then removes the workspace. It does not apply patches, commit, or publish to GitHub. Set `OLLAMA_MODEL` to a model tag already installed in Ollama.
+The endpoint clones the public repository into a temporary workspace, detects supported API client calls, reads common dependency manifests, and asks Ollama to audit detected call sites for concrete compatibility risks. Results include API evidence, dependency versions when available, findings, and optional proposed code. It scans every supported source file on every fetched branch by default. Set `all_branches` to `false` and provide `branch` to scan one named branch. A `changelog` can still be supplied for a targeted migration check. The scan proposes changes only; it does not write to GitHub. Full scans can take a long time and use substantial local model resources on large repositories.
 
 ### Example: Migration plan
 
@@ -435,15 +437,48 @@ Repository permission metadata alone does not prove that a token has every permi
 
 ### Publishing restrictions
 
-The publishing service maintains a repository allowlist.
-
-During development, the permitted test destination is:
+The publishing service only writes to repositories explicitly named in
+`API_GUARDIAN_ALLOWED_REPOSITORIES`. The development default remains the
+test repository:
 
 ```text
 sneha0832/api-guardian-test-repo
 ```
 
-The publishing executor additionally checks migration branch naming and draft PR requirements.
+For a repository you own, add its exact `owner/repository` name to
+`backend/.env` as a comma-separated allowlist. For example:
+
+```env
+GITHUB_TOKEN=your_fine_grained_token
+API_GUARDIAN_ALLOWED_REPOSITORIES=sneha0832/notion-task-manager-test
+API_GUARDIAN_ENABLE_PUBLISH=true
+```
+
+Use a fine-grained token scoped only to that repository with **Contents: Read
+and write** and **Pull requests: Read and write**. Never commit `.env`. Restart
+the backend after changing it.
+
+### Review and publish workflow
+
+1. Audit a repository and select **Generate safe fix** (or **Review proposed
+   fix** when the scan already produced code).
+2. Inspect the candidate edit, then choose **Prepare exact GitHub review**.
+   API Guardian clones the selected base branch and shows the authoritative
+   unified diff. Preparing a review makes no remote changes.
+3. Check the approval box and choose **Approve & publish draft PR**. API
+   Guardian re-clones the base branch and verifies its commit and resulting
+   diff still match the review before it creates a migration branch and draft
+   pull request. It never merges the PR.
+
+Reviews expire after 15 minutes, are single-use, and are held in memory by the
+backend. If the base branch changes, prepare and inspect a new review. The
+dashboard reports which server settings are missing without exposing the
+token. Publishing remains disabled unless the target is allowlisted, a token
+is configured, and `API_GUARDIAN_ENABLE_PUBLISH=true`.
+
+The current AI fix generator supports Python source files. If it cannot
+produce a unique, syntactically valid edit, it reports that it could not
+generate a safe patch and does not offer that change for publishing.
 
 ### Remote publishing safety
 
@@ -496,7 +531,7 @@ sequenceDiagram
     Note over B,G: Remote publishing remains disabled by default
 ```
 
-**Integration status:** `POST /api/migrations/analyze` clones a public repository, scans up to 20 source files, and sends them with the changelog to the local Ollama agent. It returns proposed changes but does not apply them. Files over 128 KiB and files beyond the scan limit are skipped and reported in the response. Configure the model and Ollama host with `OLLAMA_MODEL` and `OLLAMA_HOST`.
+**Integration status:** `POST /api/migrations/analyze` discovers supported API client calls and dependency versions, audits candidate call sites, and proposes changes without applying them. Configure the model and Ollama host with `OLLAMA_MODEL` and `OLLAMA_HOST`. Automatic findings are model-generated review suggestions; verify them before use.
 
 ---
 
@@ -576,8 +611,29 @@ python -m uvicorn main:app --reload
 Open:
 
 - API root: http://127.0.0.1:8000/
+- Interactive dashboard: http://127.0.0.1:8000/ui
 - Health check: http://127.0.0.1:8000/health
 - Swagger UI: http://127.0.0.1:8000/docs
+
+### Interactive dashboard, MLflow, and DVC
+
+The dashboard at `/ui` submits repository scans to the backend, displays proposed diffs, and shows recent MLflow runs. Successful scans log the repository, model, timing, detection result, and affected file paths; source code is not logged to MLflow.
+
+Install both backend and MLOps dependencies from the `backend/` directory:
+
+```bash
+python -m pip install -r requirements-dev.txt
+```
+
+The development requirements include `../requirements-mlops.txt`, which installs MLflow and DVC. In the dashboard, **Run DVC baseline** runs the `evaluate` stage in the root `dvc.yaml`, then records its report in the `api-guardian-dvc-evaluation` MLflow experiment. This stage uses fixture predictions as a pipeline smoke test; its scores are not live-agent performance.
+
+The default MLflow tracking store is the local root-level `mlflow.db`. To inspect runs in the MLflow UI, open another terminal at the project root, activate `backend/.venv`, then run:
+
+```bash
+mlflow ui --backend-store-uri sqlite:///mlflow.db --host 127.0.0.1 --port 5000
+```
+
+Open http://127.0.0.1:5000 to inspect the experiments.
 
 ---
 

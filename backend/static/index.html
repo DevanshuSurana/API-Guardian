@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <title>API Guardian · Migration workspace</title>
+  <style>
+    :root{--ink:#102a43;--muted:#627d98;--line:#d9e2ec;--paper:#f5f8fb;--white:#fff;--blue:#1463ff;--blue2:#eaf1ff;--green:#16845b;--amber:#9a6500;--red:#b42318;--shadow:0 14px 38px #102a4310}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    button,input,textarea{font:inherit}button{cursor:pointer}header{height:74px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,72px);position:sticky;top:0;z-index:3}
+    .brand{display:flex;align-items:center;gap:12px;font-weight:750;letter-spacing:-.03em;font-size:19px}.logo{width:35px;height:35px;border-radius:11px;background:var(--blue);color:white;display:grid;place-items:center;font-weight:800;font-size:18px}.top-meta{display:flex;gap:9px;align-items:center}.pill{font-size:12px;color:#486581;border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 10px}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#b7c3d0;margin-right:6px}.dot.ok{background:#21a179}.dot.bad{background:#d64545}
+    main{max-width:1320px;padding:34px 28px 70px;margin:auto}.intro{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:25px}.eyebrow{color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.11em;font-size:11px}.intro h1{font-size:31px;letter-spacing:-.045em;line-height:1.1;margin:7px 0}.intro p{color:var(--muted);margin:0;max-width:640px}.model-tag{font-size:12px;color:#486581;border:1px solid var(--line);padding:9px 12px;border-radius:10px;background:white;white-space:nowrap}
+    .layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(360px,.9fr);gap:20px;align-items:start}.card{background:white;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}.card-head{padding:19px 21px 16px;border-bottom:1px solid #edf1f5;display:flex;justify-content:space-between;align-items:center}.card-head h2{font-size:16px;margin:0;letter-spacing:-.02em}.card-head p{font-size:12px;color:var(--muted);margin:3px 0 0}.card-body{padding:21px}.field{margin-bottom:15px}.field label{display:block;color:#334e68;font-weight:650;font-size:12px;margin-bottom:6px}.field input,.field textarea{width:100%;border:1px solid #cbd5e1;border-radius:9px;padding:11px 12px;outline:none;color:var(--ink);background:#fff}.field textarea{min-height:112px;resize:vertical}.field input:focus,.field textarea:focus{border-color:#82aaff;box-shadow:0 0 0 3px #1463ff18}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.button-row{display:flex;gap:10px;align-items:center;margin-top:18px}.primary,.secondary{border:0;border-radius:9px;padding:10px 15px;font-weight:700}.primary{background:var(--blue);color:#fff}.primary:hover{background:#0d52d6}.primary:disabled{opacity:.55;cursor:wait}.secondary{background:var(--blue2);color:#164eb5}.hint{font-size:11px;color:var(--muted)}.branch-options{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:-2px 0 14px}.branch-options .field{margin:0;flex:1;min-width:180px}.check-label{display:flex!important;align-items:center;gap:8px;white-space:nowrap}.check-label input{width:auto!important}
+    .result-empty{border:1px dashed #cbd5e1;border-radius:12px;padding:28px 18px;text-align:center;color:var(--muted);background:#fbfcfe}.result-empty strong{display:block;color:#334e68;margin-bottom:4px}.result-summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}.stat{border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:130px;flex:1}.stat small{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}.stat strong{font-size:15px}.badge{border-radius:99px;padding:4px 9px;font-size:11px;font-weight:700;display:inline-block}.badge.break{background:#fff1e8;color:#a44700}.badge.safe{background:#e7f6ef;color:#16734f}.badge.neutral{background:#edf2f7;color:#52667a}.file{border:1px solid var(--line);border-radius:11px;margin-top:12px;overflow:hidden}.file-title{padding:10px 12px;background:#f8fafc;font-weight:700;font-size:12px;display:flex;justify-content:space-between}.explanation{padding:10px 12px;color:#486581;font-size:12px;border-top:1px solid var(--line)}pre{margin:0;padding:13px;overflow:auto;background:#0b1220;color:#d5e4f5;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;max-height:360px;white-space:pre-wrap;word-break:break-word}.diff .minus{color:#ff9b9b}.diff .plus{color:#74e0aa}.diff .meta{color:#91a7c0}.workflow{padding:12px;border-top:1px solid var(--line);background:#fbfcfe}.workflow-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.workflow .primary,.workflow .secondary{font-size:12px;padding:8px 11px}.workflow input[type=checkbox]{width:auto}.workflow-check{display:flex;gap:8px;align-items:flex-start;color:#334e68;font-size:12px;margin:12px 0}.workflow-status{font-size:12px;color:#486581;margin:8px 0}.workflow-error{color:#a12622}.workflow-success{color:#16734f}.readiness{padding:9px 11px;background:#fff8e8;color:#775300;border-radius:8px;font-size:11px;margin:9px 0;white-space:pre-wrap}.review-meta{font-size:11px;color:var(--muted);margin:8px 0}
+    .side-stack{display:grid;gap:20px}.dvc-card{background:linear-gradient(135deg,#102a43,#174b71);color:white;border:0}.dvc-card .card-head{border-color:#ffffff22}.dvc-card .card-head p{color:#c5d4e2}.dvc-card .card-body{padding:18px 21px}.dvc-card .secondary{background:#fff;color:#163b5b}.dvc-note{font-size:11px;color:#d2dfeb;margin:11px 0 0}.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:13px}.metric{padding:10px;border:1px solid #ffffff28;border-radius:10px;background:#ffffff0c}.metric span{display:block;font-size:10px;color:#cad7e3}.metric b{font-size:18px}.runs{display:grid;gap:8px}.run{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;gap:8px;align-items:center}.run b{font-size:12px;display:block}.run small{font-size:10px;color:var(--muted)}.run-value{text-align:right;color:#315b83;font-size:12px;font-weight:700}.notice{padding:10px 12px;background:#fff8e8;color:#775300;border-radius:9px;font-size:11px;margin-top:12px}.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#102a43;color:white;border-radius:10px;padding:11px 16px;box-shadow:var(--shadow);display:none;z-index:5}.loading{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:12px}.spinner{width:15px;height:15px;border:2px solid #d6e2f2;border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}.intro{align-items:start;flex-direction:column}.model-tag{white-space:normal}}@media(max-width:560px){main{padding:24px 14px}.two{grid-template-columns:1fr}.top-meta .pill:nth-child(2){display:none}.intro h1{font-size:26px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand"><div class="logo">A</div>API Guardian</div>
+    <div class="top-meta"><span class="pill"><i class="dot" id="apiDot"></i>API <span id="apiState">checking</span></span><span class="pill"><i class="dot" id="mlflowDot"></i>MLflow <span id="mlflowState">checking</span></span><span class="pill"><i class="dot" id="dvcDot"></i>DVC <span id="dvcState">checking</span></span></div>
+  </header>
+  <main>
+    <div class="intro"><div><div class="eyebrow">Self-maintaining API workspace</div><h1>Scan. Detect. Repair.</h1><p>Give API Guardian a GitHub repository. It discovers API clients and dependencies, audits likely compatibility issues, and proposes reviewable fixes.</p></div><div class="model-tag">Local model · <b>qwen2.5:latest</b></div></div>
+    <div class="layout">
+      <section class="card">
+        <div class="card-head"><div><h2>Repository audit</h2><p>Public repositories are cloned to a temporary workspace.</p></div><span class="badge neutral">Proposal only</span></div>
+        <div class="card-body">
+          <form id="scanForm">
+            <div class="field"><label for="repoUrl">GitHub repository URL</label><input id="repoUrl" type="url" value="https://github.com/sneha0832/notion-task-manager-test" placeholder="https://github.com/owner/repository" required></div>
+            <div class="field"><label for="changelog">API changelog or release notes <span class="hint">(optional, recommended for targeted audits)</span></label><textarea id="changelog" placeholder="Paste the API's release notes or describe the breaking change to check for. Without this, the audit reports only risks it can verify from detected API usage and dependency manifests."></textarea></div>
+            <div class="branch-options"><div class="field"><label for="branch">Branch (when scanning one branch)</label><input id="branch" placeholder="Leave blank for default branch"></div><label class="check-label"><input type="checkbox" id="allBranches" checked> Scan every branch</label><span class="hint">Scanning all branches takes longer.</span></div>
+            <div class="button-row"><button class="primary" id="scanButton" type="submit">Audit repository</button><span class="hint">Scans supported source files; adding release notes helps target the audit.</span></div>
+          </form>
+          <div id="scanProgress" class="loading" style="display:none;margin-top:16px"><i class="spinner"></i><span>Checking every supported source file on the selected branch(es). Local AI reviews likely matches; scanning every branch takes longer…</span></div>
+          <div id="scanResult" style="margin-top:20px"><div class="result-empty"><strong>Ready for an API audit</strong>Paste a public GitHub repository link and run a scan.</div></div>
+        </div>
+      </section>
+
+      <aside class="side-stack">
+        <section class="card dvc-card">
+          <div class="card-head"><div><h2>DVC evaluation</h2><p>Reproduce the versioned dataset baseline.</p></div><span class="badge" style="background:#ffffff20;color:white">Fixture baseline</span></div>
+          <div class="card-body"><div class="dvc-note">Runs the evaluation stage from <code>dvc.yaml</code>, then logs the report to MLflow. Fixture scores are a pipeline smoke test, not live-agent performance.</div><div class="button-row"><button class="secondary" id="dvcButton" type="button" disabled>Run DVC baseline</button><span class="hint" id="dvcSummary" style="color:#d2dfeb"></span></div><div id="dvcMetrics"></div></div>
+        </section>
+        <section class="card">
+          <div class="card-head"><div><h2>MLflow runs</h2><p>Local experiment history for scans and evaluations.</p></div><button class="secondary" id="refreshRuns" type="button">Refresh</button></div>
+          <div class="card-body"><div id="runs" class="runs"><span class="hint">Loading recent runs…</span></div></div>
+        </section>
+        <div class="notice">Nothing is sent to GitHub until you review the exact diff, check the approval box, and choose “Approve &amp; publish draft PR.” API Guardian publishes a migration branch and draft PR; it never merges the change.</div>
+      </aside>
+    </div>
+  </main>
+  <div class="toast" id="toast"></div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const toast = (message) => {
+      const element = $('toast');
+      element.textContent = message;
+      element.style.display = 'block';
+      window.setTimeout(() => { element.style.display = 'none'; }, 3500);
+    };
+
+    async function api(path, options = {}) {
+      const response = await fetch(path, options);
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json')
+        ? await response.json()
+        : { detail: await response.text() };
+      if (!response.ok) {
+        throw new Error(data.detail || `Request failed (${response.status})`);
+      }
+      return data;
+    }
+
+    function setStatus(id, available, label) {
+      $(`${id}Dot`).className = `dot ${available ? 'ok' : 'bad'}`;
+      $(`${id}State`).textContent = label;
+    }
+
+    async function loadStatus() {
+      const health = api('/health')
+        .then(() => setStatus('api', true, 'online'))
+        .catch(() => setStatus('api', false, 'offline'));
+      const mlops = api('/api/mlops/status')
+        .then((status) => {
+          setStatus('mlflow', status.mlflow_available, status.mlflow_available ? 'ready' : 'install');
+          const dvcReady = status.dvc_available && status.evaluation_config_available;
+          setStatus(
+            'dvc',
+            dvcReady,
+            dvcReady ? 'ready' : status.dvc_available ? 'config issue' : 'install',
+          );
+          $('dvcButton').disabled = !dvcReady;
+          if (status.evaluation_config_error) {
+            $('dvcSummary').textContent = status.evaluation_config_error;
+          }
+        })
+        .catch(() => {
+          setStatus('mlflow', false, 'unavailable');
+          setStatus('dvc', false, 'unavailable');
+          $('dvcButton').disabled = true;
+          $('dvcSummary').textContent = 'Could not check DVC readiness.';
+        });
+      await Promise.all([health, mlops]);
+    }
+
+    function makeDiff(original, updated) {
+      const oldLines = original.split('\n');
+      const newLines = updated.split('\n');
+      let prefix = 0;
+      while (prefix < oldLines.length && prefix < newLines.length && oldLines[prefix] === newLines[prefix]) prefix++;
+      let suffix = 0;
+      while (suffix < oldLines.length - prefix && suffix < newLines.length - prefix && oldLines.at(-1 - suffix) === newLines.at(-1 - suffix)) suffix++;
+      const start = Math.max(0, prefix - 3);
+      const oldEnd = oldLines.length - suffix;
+      const newEnd = newLines.length - suffix;
+      const lines = [`@@ lines ${start + 1} @@`];
+      for (let index = start; index < prefix; index++) lines.push(` ${oldLines[index]}`);
+      for (let index = prefix; index < oldEnd; index++) lines.push(`-${oldLines[index]}`);
+      for (let index = prefix; index < newEnd; index++) lines.push(`+${newLines[index]}`);
+      for (let index = oldEnd; index < Math.min(oldEnd + 3, oldLines.length); index++) lines.push(` ${oldLines[index]}`);
+      return lines.map((line) => {
+        const span = document.createElement('span');
+        span.textContent = `${line}\n`;
+        span.className = line.startsWith('+') ? 'plus' : line.startsWith('-') ? 'minus' : line.startsWith('@@') ? 'meta' : '';
+        return span;
+      });
+    }
+
+    function addStat(parent, label, value, badgeClass = '') {
+      const stat = document.createElement('div');
+      stat.className = 'stat';
+      const caption = document.createElement('small');
+      caption.textContent = label;
+      const output = document.createElement('strong');
+      output.textContent = value;
+      if (badgeClass) output.className = `badge ${badgeClass}`;
+      stat.append(caption, output);
+      parent.append(stat);
+    }
+
+    function renderUnifiedDiff(diff) {
+      const output = document.createElement('pre');
+      output.className = 'diff';
+      for (const line of diff.split('\n')) {
+        const span = document.createElement('span');
+        span.textContent = `${line}\n`;
+        span.className = line.startsWith('+') ? 'plus'
+          : line.startsWith('-') ? 'minus'
+            : line.startsWith('@@') ? 'meta' : '';
+        output.append(span);
+      }
+      return output;
+    }
+
+    function repositoryParts(repository) {
+      const [owner, repo] = String(repository || '').split('/');
+      if (!owner || !repo) throw new Error('Could not identify the scanned GitHub repository.');
+      return { owner, repo };
+    }
+
+    function showWorkflowError(container, error) {
+      const message = document.createElement('div');
+      message.className = 'workflow-status workflow-error';
+      message.textContent = error.message || String(error);
+      container.replaceChildren(message);
+    }
+
+    async function startFixWorkflow(container, finding, existingChange, repository) {
+      const { owner, repo } = repositoryParts(repository);
+      const branch = finding.branch || null;
+      let changes = existingChange ? [existingChange] : null;
+      container.replaceChildren();
+      const working = document.createElement('div');
+      working.className = 'loading';
+      working.innerHTML = '<i class="spinner"></i><span>Generating and validating a targeted fix…</span>';
+      container.append(working);
+
+      try {
+        if (!changes) {
+          const proposal = await api('/api/migrations/fix', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              owner,
+              repo,
+              repo_url: `https://github.com/${owner}/${repo}`,
+              branch,
+              all_branches: false,
+              file_path: finding.file_path,
+              finding_title: finding.title,
+              problem: finding.explanation,
+              recommendation: finding.recommendation,
+              changelog: $('changelog').value.trim(),
+            }),
+          });
+          changes = Array.isArray(proposal.changes) && proposal.changes.length
+            ? proposal.changes
+            : [proposal.change];
+        }
+
+        if (!changes || !changes.length) throw new Error('The repair agent returned no proposed changes.');
+        for (const change of changes) {
+          if (!change.branch) change.branch = branch;
+        }
+        container.replaceChildren();
+        for (const change of changes) {
+          const candidateTitle = document.createElement('strong');
+          candidateTitle.textContent = `Proposed fix · ${change.file_path}`;
+          const candidateNote = document.createElement('div');
+          candidateNote.className = 'workflow-status';
+          candidateNote.textContent = change.explanation || 'Review this code change before preparing a GitHub draft.';
+          const candidateDiff = document.createElement('pre');
+          candidateDiff.className = 'diff';
+          candidateDiff.append(...makeDiff(change.original_code, change.updated_code));
+          container.append(candidateTitle, candidateNote, candidateDiff);
+        }
+
+        const prepareRow = document.createElement('div');
+        prepareRow.className = 'workflow-actions';
+        const prepareButton = document.createElement('button');
+        prepareButton.type = 'button';
+        prepareButton.className = 'secondary';
+        prepareButton.textContent = 'Prepare exact GitHub review';
+        const status = document.createElement('span');
+        status.className = 'hint';
+        prepareRow.append(prepareButton, status);
+        container.append(prepareRow);
+
+        prepareButton.addEventListener('click', async () => {
+          prepareButton.disabled = true;
+          status.textContent = 'Checking the patch against the latest base branch…';
+          const reviewArea = document.createElement('div');
+          container.append(reviewArea);
+          try {
+            const review = await api('/api/migrations/publish/prepare', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                owner,
+                repo,
+                changes,
+                summary: `API Guardian: ${finding.title}`,
+                base_branch: branch || $('branch').value.trim() || 'main',
+                commit_message: `fix: ${finding.title}`.slice(0, 120),
+              }),
+            });
+            status.textContent = `Review ${review.review_id.slice(0, 8)} · expires in ${Math.ceil(review.expires_in_seconds / 60)} minutes`;
+            reviewArea.replaceChildren();
+            const details = document.createElement('div');
+            details.className = 'review-meta';
+            details.textContent = `Base: ${review.base_branch} at ${review.base_commit_sha.slice(0, 12)} · Branch: ${review.branch_name} · Files: ${review.changed_files.join(', ')}`;
+            reviewArea.append(details, renderUnifiedDiff(review.diff));
+
+            const readiness = document.createElement('div');
+            readiness.className = review.publish_ready ? 'workflow-status workflow-success' : 'readiness';
+            readiness.textContent = review.publish_ready
+              ? 'GitHub publishing is configured. Approving creates a branch and a draft pull request.'
+              : `Publishing setup needed:\n${review.readiness_issues.map((item) => `• ${item}`).join('\n')}\n\nAdd these settings to backend/.env, restart the backend, then prepare this review again.`;
+            reviewArea.append(readiness);
+
+            const approvalLabel = document.createElement('label');
+            approvalLabel.className = 'workflow-check';
+            const approval = document.createElement('input');
+            approval.type = 'checkbox';
+            const approvalText = document.createElement('span');
+            approvalText.textContent = 'I reviewed this exact diff and approve publishing the branch and draft pull request.';
+            approvalLabel.append(approval, approvalText);
+            reviewArea.append(approvalLabel);
+
+            const publishRow = document.createElement('div');
+            publishRow.className = 'workflow-actions';
+            const publishButton = document.createElement('button');
+            publishButton.type = 'button';
+            publishButton.className = 'primary';
+            publishButton.textContent = 'Approve & publish draft PR';
+            publishButton.disabled = !review.publish_ready;
+            approval.addEventListener('change', () => {
+              publishButton.disabled = !review.publish_ready || !approval.checked;
+            });
+            const publishStatus = document.createElement('span');
+            publishStatus.className = 'hint';
+            publishRow.append(publishButton, publishStatus);
+            reviewArea.append(publishRow);
+
+            publishButton.addEventListener('click', async () => {
+              if (!approval.checked) return;
+              publishButton.disabled = true;
+              publishStatus.textContent = 'Publishing the reviewed branch and opening a draft PR…';
+              try {
+                const published = await api('/api/migrations/publish/approve', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ review_id: review.review_id, approved: true }),
+                });
+                publishStatus.replaceChildren();
+                publishStatus.className = 'workflow-status workflow-success';
+                publishStatus.textContent = `Published ${published.branch_name}. `;
+                const link = document.createElement('a');
+                link.href = published.pull_request_url;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.textContent = `Open draft PR #${published.pull_request_number}`;
+                publishStatus.append(link);
+              } catch (error) {
+                publishButton.disabled = false;
+                publishStatus.className = 'workflow-status workflow-error';
+                publishStatus.textContent = error.message;
+              }
+            });
+          } catch (error) {
+            showWorkflowError(reviewArea, error);
+            prepareButton.disabled = false;
+            status.textContent = '';
+          }
+        });
+      } catch (error) {
+        showWorkflowError(container, error);
+      }
+    }
+
+    function renderScan(result) {
+      const root = $('scanResult');
+      root.replaceChildren();
+      const usages = result.api_usages || [];
+      const findings = result.findings || [];
+      const changes = result.affected_files || [];
+      const summary = document.createElement('div');
+      summary.className = 'result-summary';
+      addStat(summary, 'External API use', result.api_detected ? 'Detected' : 'Not detected', result.api_detected ? 'break' : 'safe');
+      addStat(summary, 'API call sites', String(usages.length));
+      addStat(summary, 'Potential issues', String(findings.length));
+      addStat(summary, 'Scan status', result.status || 'completed');
+      root.append(summary);
+
+      const summaryText = document.createElement('p');
+      summaryText.className = 'hint';
+      summaryText.textContent = result.summary || 'Scan completed.';
+      root.append(summaryText);
+      if (result.mlflow_run_id) {
+        const tracking = document.createElement('p');
+        tracking.className = 'hint';
+        tracking.textContent = `Tracked in MLflow · ${result.mlflow_run_id.slice(0, 12)}`;
+        root.append(tracking);
+      }
+
+      for (const usage of usages) {
+        const card = document.createElement('div');
+        card.className = 'file';
+        const title = document.createElement('div');
+        title.className = 'file-title';
+        title.textContent = `${usage.provider} · ${usage.branch} · ${usage.file_path}${usage.dependency_version ? ` · ${usage.dependency_version}` : ''}`;
+        const evidence = document.createElement('div');
+        evidence.className = 'explanation';
+        evidence.textContent = usage.evidence;
+        card.append(title, evidence);
+        root.append(card);
+      }
+
+      for (const finding of findings) {
+        const card = document.createElement('div');
+        card.className = 'file';
+        const title = document.createElement('div');
+        title.className = 'file-title';
+        title.textContent = `${(finding.severity || 'info').toUpperCase()} · ${finding.title} · ${finding.branch || 'branch?'}:${finding.file_path}`;
+        const problem = document.createElement('div');
+        problem.className = 'explanation';
+        problem.textContent = `Problem: ${finding.explanation}`;
+        const recommendation = document.createElement('div');
+        recommendation.className = 'explanation';
+        recommendation.textContent = `Suggested fix: ${finding.recommendation || 'No verified remediation was returned.'}`;
+        const evidence = document.createElement('div');
+        evidence.className = 'hint';
+        evidence.style.padding = '8px 12px';
+        evidence.textContent = `Evidence: ${finding.evidence}`;
+        const existingChange = changes.find((change) =>
+          change.file_path === finding.file_path && change.branch === finding.branch,
+        );
+        const workflow = document.createElement('div');
+        workflow.className = 'workflow';
+        const fixButton = document.createElement('button');
+        fixButton.type = 'button';
+        fixButton.className = 'secondary';
+        fixButton.textContent = existingChange ? 'Review proposed fix' : 'Generate safe fix';
+        fixButton.addEventListener('click', () => {
+          fixButton.disabled = true;
+          void startFixWorkflow(workflow, finding, existingChange, result.repository)
+            .finally(() => { fixButton.disabled = false; });
+        });
+        card.append(title, problem, recommendation, evidence, fixButton, workflow);
+        root.append(card);
+      }
+
+      if (!changes.length && !findings.length) {
+        const empty = document.createElement('div');
+        empty.className = 'result-empty';
+        const title = document.createElement('strong');
+        title.textContent = result.api_detected ? 'No verified API compatibility issue found' : 'No supported external API calls found';
+        const detail = document.createElement('span');
+        detail.textContent = result.api_detected
+          ? 'API calls were detected, but the audit could not verify a compatibility risk.'
+          : 'The scan completed without recognizing a supported API client call.';
+        empty.append(title, detail);
+        root.append(empty);
+      }
+
+      for (const file of changes) {
+        const card = document.createElement('div');
+        card.className = 'file';
+        const title = document.createElement('div');
+        title.className = 'file-title';
+        title.textContent = file.branch ? `${file.branch} · ${file.file_path}` : file.file_path;
+        const diff = document.createElement('pre');
+        diff.className = 'diff';
+        diff.append(...makeDiff(file.original_code, file.updated_code));
+        const explanation = document.createElement('div');
+        explanation.className = 'explanation';
+        explanation.textContent = file.explanation;
+        card.append(title, diff, explanation);
+        root.append(card);
+      }
+    }
+
+    $('allBranches').addEventListener('change', () => {
+      $('branch').disabled = $('allBranches').checked;
+    });
+    $('branch').disabled = $('allBranches').checked;
+
+    $('scanForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      $('scanButton').disabled = true;
+      $('scanProgress').style.display = 'flex';
+      $('scanResult').replaceChildren();
+      try {
+        const result = await api('/api/migrations/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            repo_url: $('repoUrl').value.trim(),
+            changelog: $('changelog').value.trim(),
+            all_branches: $('allBranches').checked,
+            branch: $('branch').value.trim() || null,
+          }),
+        });
+        renderScan(result);
+        void loadRuns();
+      } catch (error) {
+        $('scanResult').textContent = error.message;
+        toast(error.message);
+      } finally {
+        $('scanButton').disabled = false;
+        $('scanProgress').style.display = 'none';
+      }
+    });
+
+    async function loadRuns() {
+      const root = $('runs');
+      try {
+        const data = await api('/api/mlops/runs');
+        root.replaceChildren();
+        if (!data.available) {
+          root.textContent = data.detail || 'MLflow is unavailable in this environment.';
+          return;
+        }
+        if (!data.runs.length) {
+          root.textContent = 'No tracked runs yet. Analyze a repository or run the DVC baseline.';
+          return;
+        }
+        for (const run of data.runs) {
+          const row = document.createElement('div');
+          row.className = 'run';
+          const left = document.createElement('div');
+          const name = document.createElement('b');
+          name.textContent = run.run_name;
+          const meta = document.createElement('small');
+          meta.textContent = `${run.experiment_name} · ${run.status}`;
+          left.append(name, meta);
+          const right = document.createElement('div');
+          right.className = 'run-value';
+          right.textContent = Object.entries(run.metrics || {}).slice(0, 2)
+            .map(([key, value]) => `${key}: ${Number(value).toFixed(2)}`)
+            .join(' · ') || String(run.run_id || 'run').slice(0, 8);
+          row.append(left, right);
+          root.append(row);
+        }
+      } catch (error) {
+        root.textContent = `Could not load MLflow runs: ${error.message}`;
+      }
+    }
+
+    $('refreshRuns').addEventListener('click', loadRuns);
+    $('dvcButton').addEventListener('click', async () => {
+      const button = $('dvcButton');
+      button.disabled = true;
+      $('dvcSummary').textContent = 'Running DVC evaluation…';
+      $('dvcMetrics').replaceChildren();
+      try {
+        const result = await api('/api/mlops/dvc/repro', { method: 'POST' });
+        const detection = result.report.detection || {};
+        const patches = result.report.patches || {};
+        $('dvcSummary').textContent = `${result.report.case_results.length} cases · ${result.mlflow_run_id ? 'logged to MLflow' : 'report generated'}`;
+        const grid = document.createElement('div');
+        grid.className = 'metric-grid';
+        for (const [label, value] of [['Accuracy', detection.accuracy], ['F1', detection.f1], ['Patch rate', patches.patch_success_rate]]) {
+          const cell = document.createElement('div');
+          cell.className = 'metric';
+          const caption = document.createElement('span');
+          caption.textContent = label;
+          const number = document.createElement('b');
+          number.textContent = Number(value || 0).toFixed(2);
+          cell.append(caption, number);
+          grid.append(cell);
+        }
+        $('dvcMetrics').append(grid);
+        void loadRuns();
+      } catch (error) {
+        $('dvcSummary').textContent = error.message;
+        toast(error.message);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    void loadStatus();
+    void loadRuns();
+  </script>
+</body>
+</html>

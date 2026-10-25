@@ -1,4 +1,3 @@
-
 # ============================================================
 # API Guardian - GitHub Publishing Executor
 # File: backend/services/github_publish_executor.py
@@ -8,12 +7,15 @@
 #   draft pull request in an explicitly approved repository.
 # ============================================================
 
+import base64
 import os
 import re
-import base64
+import subprocess
+from pathlib import Path
+
 import httpx
 from git import Repo
-from pathlib import Path
+
 from services.github_auth_service import get_github_token
 from services.github_publish_service import validate_publish_target
 
@@ -44,10 +46,7 @@ def validate_publishing_request(
         raise PublishingError("Invalid base branch.")
 
     if branch_name == base_branch:
-        raise PublishingError(
-            "Migration branch cannot equal base branch."
-        )
-
+        raise PublishingError("Migration branch cannot equal base branch.")
 
 
 # ============================================================
@@ -90,49 +89,38 @@ def publish_migration_branch(
 
     # Step 3: Require explicit internal authorization.
     if not authorized:
-        raise PublishingError(
-            "Publishing requires explicit authorization."
-        )
+        raise PublishingError("Publishing requires explicit authorization.")
 
     # Step 4: Require the server-side publishing switch.
     if os.getenv("API_GUARDIAN_ENABLE_PUBLISH") != "true":
-        raise PublishingError(
-            "GitHub publishing is disabled."
-        )
+        raise PublishingError("GitHub publishing is disabled.")
 
     # Step 5: Verify the local repository.
     repository = Repo(repository_path)
 
     if repository.active_branch.name != branch_name:
-        raise PublishingError(
-            "Active branch does not match migration branch."
-        )
+        raise PublishingError("Active branch does not match migration branch.")
 
     if repository.is_dirty(untracked_files=True):
-        raise PublishingError(
-            "Repository contains uncommitted changes."
-        )
+        raise PublishingError("Repository contains uncommitted changes.")
 
     # Step 6: Verify the configured remote destination.
-    expected_remote = (
-        f"https://github.com/{repository_name}.git"
-    )
+    expected_remote = f"https://github.com/{repository_name}.git"
 
     actual_remote = repository.remotes.origin.url
 
     if actual_remote.rstrip("/").removesuffix(".git") != (
-    expected_remote.removesuffix(".git")):
-        raise PublishingError(
-            "Git remote does not match approved repository."
-        )
+        expected_remote.removesuffix(".git")
+    ):
+        raise PublishingError("Git remote does not match approved repository.")
 
     # Step 7: Obtain the GitHub token.
     token = get_github_token()
 
     # Step 8: Build the authentication header.
-    credentials = base64.b64encode(
-        f"x-access-token:{token}".encode("utf-8")
-    ).decode("ascii")
+    credentials = base64.b64encode(f"x-access-token:{token}".encode()).decode(
+        "ascii"
+    )
 
     auth_header = f"AUTHORIZATION: basic {credentials}"
 
@@ -169,24 +157,19 @@ def publish_migration_branch(
             timeout=60,
         )
 
-    except subprocess.CalledProcessError as error:
+    except subprocess.CalledProcessError:
         # Do not expose Git stderr because it may contain
         # sensitive authentication or repository details.
-        raise PublishingError(
-            "GitHub rejected the migration branch push."
-        ) from None
+        raise PublishingError("GitHub rejected the migration branch push.") from None
 
     except subprocess.TimeoutExpired:
-        raise PublishingError(
-            "GitHub branch publishing timed out."
-        ) from None
+        raise PublishingError("GitHub branch publishing timed out.") from None
 
     return {
         "repository": repository_name,
         "branch_name": branch_name,
         "status": "branch_published",
     }
-
 
 
 async def create_draft_pull_request(
@@ -200,19 +183,13 @@ async def create_draft_pull_request(
     validate_publish_target(repository_name)
 
     if not authorized:
-        raise PublishingError(
-            "Pull request creation requires authorization."
-        )
+        raise PublishingError("Pull request creation requires authorization.")
 
     if os.getenv("API_GUARDIAN_ENABLE_PUBLISH") != "true":
-        raise PublishingError(
-            "GitHub publishing is disabled."
-        )
+        raise PublishingError("GitHub publishing is disabled.")
 
     if payload.get("draft") is not True:
-        raise PublishingError(
-            "Only draft pull requests are allowed."
-        )
+        raise PublishingError("Only draft pull requests are allowed.")
 
     validate_publishing_request(
         repository_name,
@@ -228,10 +205,7 @@ async def create_draft_pull_request(
         "X-GitHub-Api-Version": "2022-11-28",
     }
 
-    url = (
-        "https://api.github.com/repos/"
-        f"{repository_name}/pulls"
-    )
+    url = f"https://api.github.com/repos/{repository_name}/pulls"
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(

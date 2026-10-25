@@ -7,7 +7,6 @@ from services.repository_validation_service import (
     validate_repository_change,
 )
 
-
 with tempfile.TemporaryDirectory() as directory:
 
     # Simulate a repository.

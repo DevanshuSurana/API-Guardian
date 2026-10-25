@@ -13,8 +13,8 @@
 # Team: Member 2 - Backend & GitHub Integration
 # ============================================================
 
-from pathlib import Path
 import difflib
+from pathlib import Path
 
 from models.schemas import FileChange
 from services.patch_service import PatchError, prepare_patch

@@ -1,4 +1,3 @@
-
 # ============================================================
 # API Guardian - Migration Orchestration Service
 # File: backend/services/migration_service.py
@@ -14,72 +13,54 @@
 # Team: Member 2 - Backend & GitHub Integration
 # ============================================================
 import os
+
+from git import Repo
+
 from models.schemas import (
+    AppliedFileResult,
+    BatchApplyResponse,
+    LocalCommitResponse,
+    MigrationPlanRequest,
+    MigrationPlanResponse,
+    MigrationPrepareResponse,
     PatchPreviewRequest,
     PatchPreviewResponse,
     PatchPreviewResult,
-)
-
-from services.repository_service import (
-    clone_repository,
-    cleanup_workspace,
-)
-
-from services.patch_service import (
-    generate_diff,
-    PatchError,
-)
-
-from models.schemas import BatchApplyResponse, AppliedFileResult
-from services.batch_patch_service import apply_batch
-
-from models.schemas import MigrationPrepareResponse
-
-from services.git_branch_service import (
-    create_migration_branch,
-    generate_git_diff,
-    get_changed_files,
-)
-
-from models.schemas import (
     PreparePullRequestRequest,
     PreparePullRequestResponse,
+    PublishDryRunResponse,
 )
-
-from services.pull_request_service import (
-    build_pull_request_payload,
-)
-
-from models.schemas import (
-    MigrationPlanRequest,
-    MigrationPlanResponse,
-)
-
-from services.git_commit_service import prepare_git_commit
+from services.batch_patch_service import apply_batch
 from services.git_branch_service import (
     create_migration_branch,
     generate_git_diff,
     get_changed_files,
 )
-from services.pull_request_service import build_pull_request_payload
-
-from models.schemas import PublishDryRunResponse
+from services.git_commit_service import (
+    create_local_migration_commit,
+    prepare_git_commit,
+)
+from services.github_publish_executor import (
+    PublishingError,
+    create_draft_pull_request,
+    publish_migration_branch,
+)
 from services.github_publish_service import (
     build_publish_plan,
     validate_publish_target,
 )
-
-from models.schemas import LocalCommitResponse
-
-from services.git_commit_service import (
-    create_local_migration_commit,
+from services.patch_service import (
+    PatchError,
+    generate_diff,
+)
+from services.pull_request_service import (
+    build_pull_request_payload,
+)
+from services.repository_service import (
+    cleanup_workspace,
+    clone_repository,
 )
 
-from services.github_publish_executor import (
-    publish_migration_branch,
-    create_draft_pull_request,
-    PublishingError,
-)
 
 def preview_migration(
     request: PatchPreviewRequest,
@@ -102,7 +83,6 @@ def preview_migration(
 
         # Step 2: Validate each proposed change.
         for change in request.changes:
-
             try:
                 # Generate a diff without modifying the file.
                 diff = generate_diff(
@@ -129,9 +109,7 @@ def preview_migration(
                 )
 
         # Step 3: Count successfully validated changes.
-        valid_count = sum(
-            1 for result in results if result.valid
-        )
+        valid_count = sum(1 for result in results if result.valid)
 
         # Step 4: Return the preview summary.
         return PatchPreviewResponse(
@@ -146,7 +124,6 @@ def preview_migration(
         # Step 5: Remove the temporary cloned repository.
         if workspace is not None:
             cleanup_workspace(workspace)
-
 
 
 # ============================================================
@@ -244,9 +221,7 @@ def prepare_migration(
         )
 
         # Step 2: Create a dedicated local migration branch.
-        branch_name = create_migration_branch(
-            str(repository_path)
-        )
+        branch_name = create_migration_branch(str(repository_path))
 
         # Step 3: Validate and apply all proposed patches.
         # An invalid patch raises PatchError.
@@ -256,14 +231,10 @@ def prepare_migration(
         )
 
         # Step 4: Generate the Git diff.
-        diff = generate_git_diff(
-            str(repository_path)
-        )
+        diff = generate_git_diff(str(repository_path))
 
         # Step 5: Identify modified tracked files.
-        changed_files = get_changed_files(
-            str(repository_path)
-        )
+        changed_files = get_changed_files(str(repository_path))
 
         # Step 6: Return the preparation results.
         return MigrationPrepareResponse(
@@ -352,6 +323,8 @@ def prepare_migration_pull_request(
 
 def create_migration_plan(
     request: MigrationPlanRequest,
+    *,
+    branch_name: str | None = None,
 ) -> MigrationPlanResponse:
     """
     Prepare a complete API migration plan.
@@ -363,18 +336,14 @@ def create_migration_plan(
     # Step 1: Validate PR metadata before cloning.
     build_pull_request_payload(
         branch_name="api-guardian/migration-validation",
-        changed_files=[
-            change.file_path for change in request.changes
-        ],
+        changed_files=[change.file_path for change in request.changes],
         summary=request.summary,
         base_branch=request.base_branch,
     )
 
     # Step 2: Validate commit message before cloning.
     if not request.commit_message.strip():
-        raise ValueError(
-            "Commit message cannot be empty."
-        )
+        raise ValueError("Commit message cannot be empty.")
 
     workspace = None
 
@@ -383,11 +352,15 @@ def create_migration_plan(
         workspace, repository_path = clone_repository(
             request.owner,
             request.repo,
+            branch=request.base_branch,
         )
+
+        base_commit_sha = Repo(repository_path).head.commit.hexsha
 
         # Step 4: Create a local migration branch.
         branch_name = create_migration_branch(
-            str(repository_path)
+            str(repository_path),
+            branch_name=branch_name,
         )
 
         # Step 5: Validate and apply proposed changes.
@@ -397,14 +370,10 @@ def create_migration_plan(
         )
 
         # Step 6: Generate the Git diff.
-        diff = generate_git_diff(
-            str(repository_path)
-        )
+        diff = generate_git_diff(str(repository_path))
 
         # Step 7: Identify modified tracked files.
-        changed_files = get_changed_files(
-            str(repository_path)
-        )
+        changed_files = get_changed_files(str(repository_path))
 
         # Step 8: Prepare commit metadata while the
         # temporary repository still exists.
@@ -432,6 +401,7 @@ def create_migration_plan(
             commit_plan=commit_plan,
             pull_request=pull_request,
             status="migration_plan_prepared",
+            base_commit_sha=base_commit_sha,
         )
 
     finally:
@@ -518,18 +488,14 @@ def execute_local_migration_commit(
     # Step 2: Validate PR metadata before cloning.
     build_pull_request_payload(
         branch_name="api-guardian/migration-validation",
-        changed_files=[
-            change.file_path for change in request.changes
-        ],
+        changed_files=[change.file_path for change in request.changes],
         summary=request.summary,
         base_branch=request.base_branch,
     )
 
     # Step 3: Validate the commit message.
     if not request.commit_message.strip():
-        raise ValueError(
-            "Commit message cannot be empty."
-        )
+        raise ValueError("Commit message cannot be empty.")
 
     workspace = None
 
@@ -541,9 +507,7 @@ def execute_local_migration_commit(
         )
 
         # Step 5: Create a local migration branch.
-        branch_name = create_migration_branch(
-            str(repository_path)
-        )
+        branch_name = create_migration_branch(str(repository_path))
 
         # Step 6: Apply all validated changes.
         apply_batch(
@@ -552,9 +516,7 @@ def execute_local_migration_commit(
         )
 
         # Step 7: Identify modified files.
-        changed_files = get_changed_files(
-            str(repository_path)
-        )
+        changed_files = get_changed_files(str(repository_path))
 
         # Step 8: Create and verify a real local Git commit.
         commit_result = create_local_migration_commit(
@@ -580,9 +542,7 @@ def execute_local_migration_commit(
             short_commit_hash=commit_result["short_commit_hash"],
             commit_message=commit_result["commit_message"],
             committed_files=commit_result["committed_files"],
-            total_committed_files=commit_result[
-                "total_committed_files"
-            ],
+            total_committed_files=commit_result["total_committed_files"],
             pull_request=pull_request,
             remote_writes_enabled=False,
             status="committed_locally",
@@ -608,6 +568,9 @@ async def execute_github_migration(
     request: MigrationPlanRequest,
     *,
     authorized: bool = False,
+    expected_base_commit_sha: str | None = None,
+    expected_diff: str | None = None,
+    branch_name: str | None = None,
 ) -> dict:
     """
     Execute the complete GitHub migration workflow.
@@ -617,25 +580,19 @@ async def execute_github_migration(
 
     # Reject unauthorized requests before cloning.
     if not authorized:
-        raise PublishingError(
-            "Remote publishing has not been authorized."
-        )
+        raise PublishingError("Remote publishing has not been authorized.")
 
     repository_name = f"{request.owner}/{request.repo}"
 
     validate_publish_target(repository_name)
 
     if os.getenv("API_GUARDIAN_ENABLE_PUBLISH") != "true":
-        raise PublishingError(
-            "Remote publishing is disabled."
-        )
+        raise PublishingError("Remote publishing is disabled.")
 
     # Validate PR metadata before performing Git operations.
     build_pull_request_payload(
         branch_name="api-guardian/migration-validation",
-        changed_files=[
-            change.file_path for change in request.changes
-        ],
+        changed_files=[change.file_path for change in request.changes],
         summary=request.summary,
         base_branch=request.base_branch,
     )
@@ -647,11 +604,22 @@ async def execute_github_migration(
         workspace, repository_path = clone_repository(
             request.owner,
             request.repo,
+            branch=request.base_branch,
         )
+
+        actual_base_commit_sha = Repo(repository_path).head.commit.hexsha
+        if (
+            expected_base_commit_sha
+            and actual_base_commit_sha != expected_base_commit_sha
+        ):
+            raise PublishingError(
+                "The repository changed after review. Prepare and review the fix again."
+            )
 
         # Create migration branch.
         branch_name = create_migration_branch(
-            str(repository_path)
+            str(repository_path),
+            branch_name=branch_name,
         )
 
         # Apply proposed code changes.
@@ -660,10 +628,16 @@ async def execute_github_migration(
             request.changes,
         )
 
+        actual_diff = generate_git_diff(str(repository_path))
+        if expected_diff is not None and actual_diff != expected_diff:
+            raise PublishingError(
+                "The generated diff no longer matches the reviewed changes."
+            )
+
         # Identify changed files.
-        changed_files = get_changed_files(
-            str(repository_path)
-        )
+        changed_files = get_changed_files(str(repository_path))
+        if not changed_files:
+            raise PublishingError("The approved fix does not change any repository files.")
 
         # Create a real local commit.
         commit_result = create_local_migration_commit(
@@ -700,12 +674,8 @@ async def execute_github_migration(
             "branch_name": branch_name,
             "commit_hash": commit_result["commit_hash"],
             "branch_status": branch_result["status"],
-            "pull_request_number": pr_result[
-                "pull_request_number"
-            ],
-            "pull_request_url": pr_result[
-                "pull_request_url"
-            ],
+            "pull_request_number": pr_result["pull_request_number"],
+            "pull_request_url": pr_result["pull_request_url"],
             "status": "published",
         }
 

@@ -17,7 +17,6 @@ from pathlib import Path
 import httpx
 from dotenv import load_dotenv
 
-
 # Locate backend/.env regardless of where Python is run.
 ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
 
