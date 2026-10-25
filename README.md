@@ -1,115 +1,57 @@
-# API Guardian — Member 3: MLOps and Evaluation
+# API Guardian
 
-Member 3 owns the evaluation data, repeatable evaluation pipeline, and experiment reporting for API Guardian. This work helps the team measure whether the agent detects breaking API changes and whether its proposed migrations pass tests.
+API Guardian scans a GitHub repository for API usage and compatibility risks, explains potential problems, and proposes code fixes for review. It uses a local Ollama model for analysis. Publishing a branch and draft pull request requires an explicit approval of the prepared diff.
 
-## Current contents
+## Repository layout
 
-- `datasets/api_changes/api_changes.jsonl`: 12 labeled breaking and non-breaking API change cases, including fixture-only baseline predictions.
-- `datasets/migration_cases/migration_cases.jsonl`: 12 matching migration examples with expected affected files and behavior.
-- `mlops/metrics.py`: detection and patch outcome metrics.
-- `mlops/evaluation/evaluate.py`: evaluation CLI that writes a JSON report and can optionally log metrics to MLflow.
-- `dvc.yaml` and `dvc.lock`: a DVC evaluation stage that records the input and output hashes.
-- `tests/test_metrics.py`: unit tests for the metric calculations.
+```text
+ai_agent/          Local-model audit and repair agents
+backend/           FastAPI service, dashboard, GitHub integration, and backend tests
+datasets/          Versioned API-change and migration evaluation fixtures
+mlops/             Evaluation metrics, DVC pipeline, and MLflow tracking
+tests/             Root-level MLOps tests
+README_MEMBER3.md  Member 3 guide to evaluation and MLOps
+```
 
-The migration examples are synthetic fixtures. Their affected file paths describe example projects; they do not refer to files in the API Guardian repository.
+The backend serves the interactive dashboard at `/ui` and the API documentation at `/docs`. See [backend/README.md](backend/README.md) for API, GitHub publishing, and backend details, and [ai_agent/README.md](ai_agent/README.md) for the agent interface.
 
-> **Baseline warning:** `baseline_prediction` and the other `baseline_*` fields are fixture values for checking that the evaluation pipeline runs. They are not measurements of the real API Guardian agent. Do not report them as agent performance.
+## Requirements
 
-## Setup in VS Code
+- Python `>=3.13,<3.15`
+- Git
+- [Ollama](https://ollama.com/) running locally with `gemma3:4b`
 
-Open the repository root in VS Code and activate the project virtual environment in the integrated terminal. If `.venv` does not exist yet, create it first with one of the commands below; skip the creation command when reusing an existing environment.
+## Run locally in VS Code
 
-macOS/Linux:
+Open the repository root or `API-Guardian.code-workspace` in VS Code. From the integrated terminal:
 
 ```bash
 python3.13 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements-mlops.txt -r backend/requirements-dev.txt
+python -m pip install -r backend/requirements-dev.txt
 python -m pip install -e .
+ollama pull gemma3:4b
 ```
 
-Windows PowerShell:
-
-```powershell
-py -3.13 -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install -r requirements-mlops.txt -r backend/requirements-dev.txt
-python -m pip install -e .
-```
-
-The project supports Python `>=3.13,<3.15`.
-
-## Run and validate
-
-Run the unit tests:
+If you already have a virtual environment, activate it and skip the creation command. Start the backend:
 
 ```bash
-python -m pytest -q
+cd backend
+OLLAMA_MODEL=gemma3:4b ../.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-This runs the MLOps, backend, and AI-agent unit tests from the repository root.
-Tests marked `integration` are skipped because they require local Ollama or
-external GitHub access.
+Then open <http://127.0.0.1:8000/ui>. On Windows, use the activation and launch commands in [backend/README.md](backend/README.md).
 
-Run the bundled fixture evaluation without MLflow:
+## Local configuration
 
-```bash
-python -m mlops.evaluation.evaluate --no-mlflow --output mlops/evaluation/reports/local-report.json
-```
+Copy `backend/.env.example` to `backend/.env` only if `backend/.env` does not already exist. Add a GitHub token there only when you need authenticated publishing. `.env` files are ignored by Git; never commit or share the token. Publishing remains disabled in the example until you explicitly enable it for an allowed repository.
 
-Run the same evaluation through DVC and check reproducibility:
+## Evaluation
+
+The evaluation fixtures are synthetic smoke-test data; their baseline values are not measurements of live agent performance. Run the DVC evaluation from the repository root with:
 
 ```bash
 dvc repro
-dvc status
 ```
 
-`dvc repro` writes `mlops/evaluation/reports/latest.json` (ignored by Git) and updates `dvc.lock` when inputs or outputs change. The current DVC setup tracks stage dependencies and hashes in the lockfile; no DVC remote is configured for sharing dataset objects.
-
-The report includes detection precision, recall, F1, accuracy, confusion counts, patch generation/pass rates, regressions, and a per-case detection result. The current fixture run covers 12 cases. It does not measure latency or cost.
-
-## Evaluate real agent predictions
-
-Create a JSONL prediction file with one record per `case_id` in `api_changes.jsonl`:
-
-```json
-{"case_id":"rename_method_001","detected_breaking":true,"patch_generated":true,"tests_passed":true,"regression_detected":false}
-```
-
-Run the evaluator against that file:
-
-```bash
-python -m mlops.evaluation.evaluate \
-  --predictions path/to/predictions.jsonl \
-  --run-name agent-v1 \
-  --output mlops/evaluation/reports/agent-v1-report.json
-```
-
-Prediction rows must use the dataset's exact case IDs and include `detected_breaking`. Patch fields are `patch_generated`, `tests_passed`, and `regression_detected`.
-
-Keep ground truth and predictions separate. Do not include `expected_breaking` or `expected_migration` in the agent prompt; doing so leaks the answer.
-
-## MLflow tracking
-
-The evaluator logs a run to the local MLflow tracking store by default when MLflow is installed:
-
-```bash
-python -m mlops.evaluation.evaluate --run-name agent-v1
-mlflow ui --host 127.0.0.1 --port 5000
-```
-
-Open <http://127.0.0.1:5000> to inspect runs. Use a distinct `--run-name` for each prompt or model configuration being compared.
-
-## Current limits and next integration steps
-
-- The backend is now wired to the local Ollama agent, but the evaluator still only has fixture predictions. Generate prediction JSONL from real agent runs before reporting agent performance.
-- Compare at least two prompt or model configurations using the same cases.
-- Extend the result schema and evaluator to capture latency and cost.
-- Confirm patch success against real test execution, rather than relying only on prediction fields.
-- Configure a DVC remote if the team needs to share dataset objects outside Git.
-
-## Member 2 integration contract
-
-Recommended input to the agent: one API change plus relevant source code, without ground-truth fields.
-
-Recommended output: one prediction row per case in the format above. The evaluation CLI joins predictions to labels by `case_id` and reports detection and patch outcomes.
+See [README_MEMBER3.md](README_MEMBER3.md) for the evaluation datasets, metrics, and MLflow/DVC workflow.
