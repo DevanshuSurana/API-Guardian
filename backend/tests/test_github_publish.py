@@ -12,10 +12,22 @@
 
 import json
 
+import pytest
+
 from models.schemas import MigrationPlanResponse
 from services.github_publish_service import (
     build_publish_plan,
 )
+
+
+@pytest.fixture(autouse=True)
+def isolate_publish_configuration(monkeypatch):
+    """Keep local backend/.env settings from changing unit-test behavior."""
+    monkeypatch.setenv(
+        "API_GUARDIAN_ALLOWED_REPOSITORIES",
+        "sneha0832/api-guardian-test-repo",
+    )
+    monkeypatch.setenv("API_GUARDIAN_ENABLE_PUBLISH", "false")
 
 
 def test_publish_plan():

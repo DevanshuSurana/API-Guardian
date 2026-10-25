@@ -11,6 +11,7 @@ import os
 import subprocess
 from unittest.mock import patch
 
+import pytest
 from git import Repo
 
 from services import github_publish_executor as publisher
@@ -18,6 +19,15 @@ from services.github_publish_executor import (
     PublishingError,
     publish_migration_branch,
 )
+
+
+@pytest.fixture(autouse=True)
+def isolate_publish_allowlist(monkeypatch):
+    """Use a disposable test destination, independent of backend/.env."""
+    monkeypatch.setenv(
+        "API_GUARDIAN_ALLOWED_REPOSITORIES",
+        "sneha0832/api-guardian-test-repo",
+    )
 
 
 def test_unauthorized_push():

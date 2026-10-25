@@ -47,6 +47,16 @@ def build_test_request():
     )
 
 
+@pytest.fixture(autouse=True)
+def isolate_publish_configuration(monkeypatch):
+    """Keep integration checks independent of backend/.env destinations."""
+    monkeypatch.setenv(
+        "API_GUARDIAN_ALLOWED_REPOSITORIES",
+        "sneha0832/api-guardian-test-repo",
+    )
+    monkeypatch.setenv("API_GUARDIAN_ENABLE_PUBLISH", "false")
+
+
 @pytest.mark.integration
 def test_unauthorized_publishing():
     """Ensure unauthorized publishing is rejected."""
