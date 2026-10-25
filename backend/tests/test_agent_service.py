@@ -1,7 +1,6 @@
 import asyncio
 
 import pytest
-
 from models.schemas import FileChange
 from services import agent_service
 
@@ -14,6 +13,31 @@ def _mock_repo(monkeypatch, workspace, repository, branches):
     )
     monkeypatch.setattr(agent_service, "repository_branches", lambda path: branches)
     monkeypatch.setattr(agent_service, "checkout_repository_branch", lambda path, branch: None)
+    monkeypatch.setattr(agent_service, "checked_out_commit_sha", lambda path: "a" * 40)
+    monkeypatch.setattr(
+        agent_service,
+        "SCAN_HISTORY_DATABASE_PATH",
+        workspace / "scan-history.db",
+    )
+
+
+def test_proposed_fix_is_blocked_when_follow_up_audit_still_finds_issue(monkeypatch):
+    monkeypatch.setattr(
+        agent_service,
+        "audit_source_for_api_issues",
+        lambda *_args: {"findings": [{"title": "Removed API argument"}]},
+    )
+
+    verification = agent_service._verify_proposed_fixes(
+        "client.py",
+        "httpx dependency",
+        [{
+            "title": "Removed API argument",
+            "proposed_code": "client.request(new_arg=True)\n",
+        }],
+    )
+
+    assert verification["Removed API argument"][0] == "still_detected"
 
 
 def test_analyze_migration_scans_all_files_without_count_or_size_caps(
@@ -64,6 +88,7 @@ def test_analyze_migration_scans_all_files_without_count_or_size_caps(
     assert analyzed == ["src/client_23.py"]
     assert result.status == "analysis_complete"
     assert result.branches_scanned == ["main"]
+    assert result.scanned_revisions[0].commit_sha == "a" * 40
     assert "Analyzed 25 source files" in result.summary
     assert "AI reviewed 1 likely candidates" in result.summary
     assert "Skipped" not in result.summary
@@ -119,6 +144,12 @@ def test_analyze_migration_accepts_one_named_branch(tmp_path, monkeypatch):
         lambda owner, repo, **kwargs: (clone_args.update(kwargs) or (workspace, repository)),
     )
     monkeypatch.setattr(agent_service, "repository_branches", lambda path: ["main"])
+    monkeypatch.setattr(agent_service, "checked_out_commit_sha", lambda path: "b" * 40)
+    monkeypatch.setattr(
+        agent_service,
+        "SCAN_HISTORY_DATABASE_PATH",
+        tmp_path / "scan-history.db",
+    )
     checked_out = []
     monkeypatch.setattr(
         agent_service,
@@ -152,7 +183,12 @@ def test_automatic_audit_finds_api_calls_and_proposes_verified_fix(
     workspace = tmp_path / "workspace"
     repository = workspace / "repository"
     repository.mkdir(parents=True)
-    source = "result = notion.databases.query(database_id=database_id)\n"
+    source = (
+        "notion_client = object()\n"
+        "database_id = 'database-id'\n"
+        "data_source_id = 'source-id'\n"
+        "result = notion_client.databases.query(database_id=database_id)\n"
+    )
     (repository / "tasks.py").write_text(source)
     _mock_repo(monkeypatch, workspace, repository, ["main"])
     monkeypatch.setattr(agent_service, "list_source_files", lambda path: ["tasks.py"])
@@ -161,14 +197,24 @@ def test_automatic_audit_finds_api_calls_and_proposes_verified_fix(
         "audit_source_for_api_issues",
         lambda source_code, file_path, dependency_context: {
             "api_detected": True,
-            "api_usages": ["notion.databases.query(database_id=database_id)"],
+            "api_usages": [
+                "notion_client.databases.query(database_id=database_id)"
+            ],
             "findings": [{
-                "title": "Notion database query API migration",
+                "title": "Notion database queries need a data-source migration",
                 "severity": "high",
-                "evidence": "notion.databases.query(database_id=database_id)",
+                "evidence": (
+                    "notion_client.databases.query(database_id=database_id)"
+                ),
                 "explanation": "The new API queries a data source.",
                 "recommendation": "Use a data source ID and query method.",
-                "proposed_code": "result = notion.data_sources.query(data_source_id=data_source_id)\n",
+                "proposed_code": (
+                    "notion_client = object()\n"
+                    "database_id = 'database-id'\n"
+                    "data_source_id = 'source-id'\n"
+                    "result = notion_client.data_sources.query("
+                    "data_source_id=data_source_id)\n"
+                ),
             }],
         },
     )
@@ -186,9 +232,250 @@ def test_automatic_audit_finds_api_calls_and_proposes_verified_fix(
     assert result.repository == "example/notion-app"
     assert result.api_detected is True
     assert result.api_usages[0].provider == "Notion"
-    assert result.findings[0].severity == "high"
-    assert result.affected_files[0].updated_code.startswith("result = notion.data_sources")
+    assert result.findings[0].severity == "medium"
+    assert "notion_client.data_sources" in result.affected_files[0].updated_code
     assert result.breaking_change is True
+    assert not workspace.exists()
+
+
+def test_automatic_audit_drops_generic_advice_and_rejects_unsafe_fix(
+    tmp_path, monkeypatch
+):
+    workspace = tmp_path / "workspace"
+    repository = workspace / "repository"
+    repository.mkdir(parents=True)
+    source = '''import requests
+
+def fetch_post(post_id=1):
+    response = requests.get(f"https://example.test/posts/{post_id}")
+    response.raise_for_status()
+    return response.json()
+'''
+    (repository / "client.py").write_text(source, encoding="utf-8")
+    _mock_repo(monkeypatch, workspace, repository, ["main"])
+    monkeypatch.setattr(agent_service, "list_source_files", lambda _path: ["client.py"])
+    generic_advice = {
+        "title": "HTTP request to Example API",
+        "severity": "high",
+        "evidence": "requests.get(f\"https://example.test/posts/{post_id}\")",
+        "explanation": "The code uses requests.get to make an HTTP request.",
+        "recommendation": "Consider using a more robust HTTP client like httpx.",
+        "proposed_code": source,
+    }
+    unsafe_compatibility_fix = {
+        "title": "Removed HTTP parameter",
+        "severity": "high",
+        "evidence": "requests.get(f\"https://example.test/posts/{post_id}\")",
+        "explanation": "The API removed this parameter and the old call will fail.",
+        "recommendation": "Use the supported request parameter.",
+        "proposed_code": '''import requests
+
+def fetch_post(post_id=1):
+    response.raise_for_status()
+    return response.json()
+''',
+    }
+    monkeypatch.setattr(
+        agent_service,
+        "audit_source_for_api_issues",
+        lambda *_args: {
+            "api_detected": True,
+            "api_usages": [generic_advice["evidence"]],
+            "findings": [generic_advice, unsafe_compatibility_fix],
+        },
+    )
+
+    result = asyncio.run(
+        agent_service.analyze_migration(
+            agent_service.MigrationRequest(
+                owner="example",
+                repo="client",
+                all_branches=False,
+                branch="main",
+            )
+        )
+    )
+
+    assert len(result.api_usages) == 1
+    assert len(result.findings) == 1
+    assert result.findings[0].title == "Removed HTTP parameter"
+    assert result.findings[0].proposed_code is None
+    assert result.affected_files == []
+    assert result.breaking_change is True
+    assert not workspace.exists()
+
+
+def test_automatic_audit_reports_verified_figma_nodes_parameter_fix(
+    tmp_path, monkeypatch
+):
+    workspace = tmp_path / "workspace"
+    repository = workspace / "repository"
+    repository.mkdir(parents=True)
+    source = '''import httpx
+import re
+
+class FigmaError(Exception):
+    pass
+
+def extract_file_key(key):
+    return key
+
+BASE_URL = "https://api.figma.com/v1"
+
+class FigmaClient:
+    async def get_file(self, key):
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.figma.com/v1/file/{extract_file_key(key)}",
+                headers={"X-Figma-Token": self.token},
+            )
+            response.raise_for_status()
+            return response.json()
+
+    async def get_nodes(self, key, node_ids):
+        # REQUEST 2: Incorrect Figma API query parameter
+        # BUG: node_ids should be ids
+        if not node_ids or len(node_ids) > 10 or any(
+            not re.fullmatch(r"[0-9]+:[0-9]+", node)
+            for node in node_ids
+        ):
+            raise FigmaError("Provide 1-10 valid node IDs.", 400)
+        return await self.request(
+            f"/files/{extract_file_key(key)}/nodes",
+            {"node_ids": ",".join(node_ids)},
+        )
+'''
+    (repository / "figma_client.py").write_text(source, encoding="utf-8")
+    _mock_repo(monkeypatch, workspace, repository, ["main"])
+    monkeypatch.setattr(
+        agent_service,
+        "list_source_files",
+        lambda _path: ["figma_client.py"],
+    )
+    monkeypatch.setattr(
+        agent_service,
+        "audit_source_for_api_issues",
+        lambda *_args: {
+            "api_detected": True,
+            "api_usages": [],
+            "findings": [{
+                "title": "Incorrect Figma API query parameter",
+                "severity": "high",
+                "evidence": "# BUG: node_ids should be ids",
+                "explanation": (
+                    "The get_nodes method incorrectly passes node_ids as a string."
+                ),
+                "recommendation": (
+                    "Format node_ids as a comma-separated string of valid IDs."
+                ),
+                "proposed_code": "",
+            }],
+        },
+    )
+
+    result = asyncio.run(
+        agent_service.analyze_migration(
+            agent_service.MigrationRequest(
+                owner="example",
+                repo="figma-client",
+                all_branches=False,
+                branch="main",
+            )
+        )
+    )
+
+    assert len(result.api_usages) == 3
+    assert {usage.provider for usage in result.api_usages} == {
+        "Figma REST API",
+        "HTTPX",
+    }
+    assert len(result.findings) == 2
+    assert {finding.severity for finding in result.findings} == {"high"}
+    assert {finding.verification_status for finding in result.findings} == {"verified"}
+    assert all(
+        '"ids": ",".join(node_ids)' in finding.proposed_code
+        for finding in result.findings
+    )
+    assert all(
+        'f"https://api.figma.com/v1/files/{extract_file_key(key)}"'
+        in finding.proposed_code
+        for finding in result.findings
+    )
+    assert len(result.affected_files) == 1
+    assert '"ids": ",".join(node_ids)' in result.affected_files[0].updated_code
+    assert (
+        'f"https://api.figma.com/v1/files/{extract_file_key(key)}"'
+        in result.affected_files[0].updated_code
+    )
+    assert '"node_ids":' not in result.affected_files[0].updated_code
+    assert result.breaking_change is True
+    assert not workspace.exists()
+
+
+def test_finding_fix_uses_deterministic_figma_rule_instead_of_model(
+    tmp_path, monkeypatch
+):
+    workspace = tmp_path / "workspace"
+    repository = workspace / "repository"
+    repository.mkdir(parents=True)
+    source = '''import re
+
+class FigmaError(Exception):
+    pass
+
+def extract_file_key(key):
+    return key
+
+class FigmaClient:
+    async def get_nodes(self, key, node_ids):
+        if not node_ids or len(node_ids) > 10 or any(
+            not re.fullmatch(r'[0-9]+:[0-9]+', node)
+            for node in node_ids
+        ):
+            raise FigmaError('Provide 1-10 valid Figma node IDs (e.g. 1:2).', 400)
+        return await self.request(
+            f'/files/{extract_file_key(key)}/nodes',
+            {'node_ids': ','.join(node_ids)}
+        )
+'''
+    (repository / "figma_client.py").write_text(source, encoding="utf-8")
+    monkeypatch.setattr(
+        agent_service,
+        "clone_repository",
+        lambda owner, repo, **kwargs: (workspace, repository),
+    )
+    monkeypatch.setattr(agent_service, "checked_out_commit_sha", lambda _path: "a" * 40)
+    monkeypatch.setattr(
+        agent_service,
+        "analyze_source_with_ai",
+        lambda **_kwargs: pytest.fail("Known Figma repairs must not call the model"),
+    )
+
+    proposal = agent_service.generate_finding_fix(
+        agent_service.FixProposalRequest(
+            owner="example",
+            repo="figma-client",
+            branch="main",
+            file_path="figma_client.py",
+            finding_title="Incorrect Figma API query parameter",
+            problem=(
+                "The get_nodes method incorrectly passes node_ids as a string "
+                "to the Figma API."
+            ),
+            recommendation=(
+                "Rename the Figma query parameter to ids and keep the comma-"
+                "separated node IDs."
+            ),
+            expected_commit_sha="a" * 40,
+        )
+    )
+
+    assert proposal.status == "fix_proposed"
+    assert proposal.verification_status == "verified"
+    assert "{'ids': ','.join(node_ids)}" in proposal.change.updated_code
+    assert "re.fullmatch" in proposal.change.updated_code
+    assert "re.match" not in proposal.change.updated_code
+    assert "{'node_ids':" not in proposal.change.updated_code
     assert not workspace.exists()
 
 
@@ -287,6 +574,94 @@ def test_live_audit_includes_notions_legacy_query_migration_guidance(
     assert result.affected_files == []
 
 
+def test_notion_audit_uses_version_from_config_and_ignores_docstring_text(
+    tmp_path, monkeypatch
+):
+    workspace = tmp_path / "workspace"
+    repository = workspace / "repository"
+    app = repository / "app"
+    app.mkdir(parents=True)
+    (app / "config.py").write_text(
+        "import os\nNOTION_VERSION = os.getenv('NOTION_VERSION', '2022-06-28')\n",
+        encoding="utf-8",
+    )
+    (app / "notion_client.py").write_text(
+        '''"""Notion-Version: 2022-06-28; old POST /v1/databases/{database_id}/query."""
+async def query_database(self, database_id):
+    return await self.request("POST", f"/databases/{database_id}/query")
+''',
+        encoding="utf-8",
+    )
+    _mock_repo(monkeypatch, workspace, repository, ["main"])
+    monkeypatch.setattr(
+        agent_service,
+        "list_source_files",
+        lambda _path: ["app/config.py", "app/notion_client.py"],
+    )
+    monkeypatch.setattr(
+        agent_service,
+        "audit_source_for_api_issues",
+        lambda *_args: {"api_detected": True, "api_usages": [], "findings": []},
+    )
+
+    result = asyncio.run(agent_service.analyze_migration(
+        agent_service.MigrationRequest(
+            repo_url="https://github.com/example/notion-app",
+            all_branches=False,
+            branch="main",
+        )
+    ))
+
+    assert len(result.findings) == 1
+    assert result.findings[0].file_path == "app/notion_client.py"
+    assert result.findings[0].title == "Notion database queries need a data-source migration"
+    assert "NOTION_VERSION defaults" in result.findings[0].evidence
+    assert {usage.provider for usage in result.api_usages} == {"Notion REST API"}
+    assert not workspace.exists()
+
+
+def test_notion_audit_does_not_report_old_text_in_docstring_after_migration(
+    tmp_path, monkeypatch
+):
+    workspace = tmp_path / "workspace"
+    repository = workspace / "repository"
+    app = repository / "app"
+    app.mkdir(parents=True)
+    (app / "config.py").write_text(
+        "import os\nNOTION_VERSION = os.getenv('NOTION_VERSION', '2025-09-03')\n",
+        encoding="utf-8",
+    )
+    (app / "notion_client.py").write_text(
+        '''"""Notion adapter uses new endpoints. Legacy: Notion-Version: 2022-06-28 and POST /v1/databases/{database_id}/query."""
+async def query_database(self, data_source_id):
+    return await self.request("POST", f"/data_sources/{data_source_id}/query")
+''',
+        encoding="utf-8",
+    )
+    _mock_repo(monkeypatch, workspace, repository, ["api-guardian/migration"])
+    monkeypatch.setattr(
+        agent_service,
+        "list_source_files",
+        lambda _path: ["app/config.py", "app/notion_client.py"],
+    )
+    monkeypatch.setattr(
+        agent_service,
+        "audit_source_for_api_issues",
+        lambda *_args: {"api_detected": True, "api_usages": [], "findings": []},
+    )
+
+    result = asyncio.run(agent_service.analyze_migration(
+        agent_service.MigrationRequest(
+            repo_url="https://github.com/example/notion-app",
+            all_branches=False,
+            branch="api-guardian/migration",
+        )
+    ))
+
+    assert result.findings == []
+    assert not workspace.exists()
+
+
 def test_generate_finding_fix_returns_validated_preview(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     repository = workspace / "repository"
@@ -297,6 +672,12 @@ def test_generate_finding_fix_returns_validated_preview(tmp_path, monkeypatch):
         agent_service,
         "clone_repository",
         lambda owner, repo, **kwargs: (workspace, repository),
+    )
+    monkeypatch.setattr(agent_service, "checked_out_commit_sha", lambda path: "c" * 40)
+    monkeypatch.setattr(
+        agent_service,
+        "audit_source_for_api_issues",
+        lambda *_args: {"findings": []},
     )
     monkeypatch.setattr(
         agent_service,
@@ -323,14 +704,45 @@ def test_generate_finding_fix_returns_validated_preview(tmp_path, monkeypatch):
             finding_title="Removed method",
             problem="The client method was removed.",
             recommendation="Use the replacement method.",
+            expected_commit_sha="c" * 40,
         )
     )
 
     assert result.status == "fix_proposed"
+    assert result.verification_status == "recheck_passed"
+    assert result.base_commit_sha == "c" * 40
     assert result.change.original_code == source
     assert result.change.updated_code == "client.new_call()\n"
     assert "-client.old_call()" in result.diff
     assert "+client.new_call()" in result.diff
+    assert not workspace.exists()
+
+
+def test_generate_finding_fix_rejects_a_stale_scan_revision(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    repository = workspace / "repository"
+    repository.mkdir(parents=True)
+    (repository / "client.py").write_text("client.old_call()\n", encoding="utf-8")
+    monkeypatch.setattr(
+        agent_service,
+        "clone_repository",
+        lambda owner, repo, **kwargs: (workspace, repository),
+    )
+    monkeypatch.setattr(agent_service, "checked_out_commit_sha", lambda path: "e" * 40)
+
+    with pytest.raises(ValueError, match="changed after this scan"):
+        agent_service.generate_finding_fix(
+            agent_service.FixProposalRequest(
+                owner="example",
+                repo="client",
+                branch="main",
+                file_path="client.py",
+                finding_title="Removed method",
+                problem="The client method was removed.",
+                recommendation="Use the replacement method.",
+                expected_commit_sha="f" * 40,
+            )
+        )
     assert not workspace.exists()
 
 
@@ -423,6 +835,7 @@ def test_legacy_notion_api_operations(monkeypatch):
         "clone_repository",
         lambda owner, repo, **kwargs: (workspace, repository),
     )
+    monkeypatch.setattr(agent_service, "checked_out_commit_sha", lambda path: "d" * 40)
     monkeypatch.setattr(
         agent_service,
         "analyze_source_with_ai",
@@ -442,6 +855,7 @@ def test_legacy_notion_api_operations(monkeypatch):
     )
 
     assert proposal.status == "fix_proposed"
+    assert proposal.verification_status == "verified"
     assert {change.file_path for change in proposal.changes} == {
         "app/notion_client.py",
         "app/config.py",

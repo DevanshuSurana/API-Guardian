@@ -119,6 +119,7 @@ def test_authorized_push_uses_environment_credentials_without_leaking_token(
     repository_path, branch_name = _clean_migration_repository(tmp_path)
     monkeypatch.setenv("API_GUARDIAN_ENABLE_PUBLISH", "true")
     monkeypatch.setattr(publisher, "get_github_token", lambda: "secret-token")
+    monkeypatch.setattr(publisher, "_require_repository_push_access", lambda *_: None)
     calls = []
 
     def fake_run(command, **kwargs):
@@ -146,6 +147,7 @@ def test_push_process_errors_are_reported_as_publishing_errors(tmp_path, monkeyp
     repository_path, branch_name = _clean_migration_repository(tmp_path)
     monkeypatch.setenv("API_GUARDIAN_ENABLE_PUBLISH", "true")
     monkeypatch.setattr(publisher, "get_github_token", lambda: "secret-token")
+    monkeypatch.setattr(publisher, "_require_repository_push_access", lambda *_: None)
 
     for error in (
         subprocess.CalledProcessError(1, ["git", "push"]),
@@ -167,6 +169,42 @@ def test_push_process_errors_are_reported_as_publishing_errors(tmp_path, monkeyp
             except PublishingError:
                 continue
             raise AssertionError("Git process errors must be wrapped safely.")
+
+
+def test_missing_repository_write_access_is_reported_before_push(
+    tmp_path, monkeypatch
+):
+    repository_path, branch_name = _clean_migration_repository(tmp_path)
+    monkeypatch.setenv("API_GUARDIAN_ENABLE_PUBLISH", "true")
+    monkeypatch.setattr(publisher, "get_github_token", lambda: "secret-token")
+
+    class ReadOnlyRepositoryResponse:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return {"permissions": {"pull": True, "push": False}}
+
+    monkeypatch.setattr(
+        publisher.httpx,
+        "get",
+        lambda *_args, **_kwargs: ReadOnlyRepositoryResponse(),
+    )
+    monkeypatch.setattr(
+        publisher.subprocess,
+        "run",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("A push must not be attempted without repository write access.")
+        ),
+    )
+
+    with pytest.raises(PublishingError, match="does not have write access"):
+        publish_migration_branch(
+            repository_path=str(repository_path),
+            repository_name="sneha0832/api-guardian-test-repo",
+            branch_name=branch_name,
+            authorized=True,
+        )
 
 
 if __name__ == "__main__":

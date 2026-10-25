@@ -4,63 +4,432 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <title>API Guardian · Migration workspace</title>
+  <title>API Guardian · API maintenance</title>
   <style>
-    :root{--ink:#102a43;--muted:#627d98;--line:#d9e2ec;--paper:#f5f8fb;--white:#fff;--blue:#1463ff;--blue2:#eaf1ff;--green:#16845b;--amber:#9a6500;--red:#b42318;--shadow:0 14px 38px #102a4310}
-    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-    button,input,textarea{font:inherit}button{cursor:pointer}header{height:74px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,72px);position:sticky;top:0;z-index:3}
-    .brand{display:flex;align-items:center;gap:12px;font-weight:750;letter-spacing:-.03em;font-size:19px}.logo{width:35px;height:35px;border-radius:11px;background:var(--blue);color:white;display:grid;place-items:center;font-weight:800;font-size:18px}.top-meta{display:flex;gap:9px;align-items:center}.pill{font-size:12px;color:#486581;border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 10px}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#b7c3d0;margin-right:6px}.dot.ok{background:#21a179}.dot.bad{background:#d64545}
-    main{max-width:1320px;padding:34px 28px 70px;margin:auto}.intro{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:25px}.eyebrow{color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.11em;font-size:11px}.intro h1{font-size:31px;letter-spacing:-.045em;line-height:1.1;margin:7px 0}.intro p{color:var(--muted);margin:0;max-width:640px}.model-tag{font-size:12px;color:#486581;border:1px solid var(--line);padding:9px 12px;border-radius:10px;background:white;white-space:nowrap}
-    .layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(360px,.9fr);gap:20px;align-items:start}.card{background:white;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}.card-head{padding:19px 21px 16px;border-bottom:1px solid #edf1f5;display:flex;justify-content:space-between;align-items:center}.card-head h2{font-size:16px;margin:0;letter-spacing:-.02em}.card-head p{font-size:12px;color:var(--muted);margin:3px 0 0}.card-body{padding:21px}.field{margin-bottom:15px}.field label{display:block;color:#334e68;font-weight:650;font-size:12px;margin-bottom:6px}.field input,.field textarea{width:100%;border:1px solid #cbd5e1;border-radius:9px;padding:11px 12px;outline:none;color:var(--ink);background:#fff}.field textarea{min-height:112px;resize:vertical}.field input:focus,.field textarea:focus{border-color:#82aaff;box-shadow:0 0 0 3px #1463ff18}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.button-row{display:flex;gap:10px;align-items:center;margin-top:18px}.primary,.secondary{border:0;border-radius:9px;padding:10px 15px;font-weight:700}.primary{background:var(--blue);color:#fff}.primary:hover{background:#0d52d6}.primary:disabled{opacity:.55;cursor:wait}.secondary{background:var(--blue2);color:#164eb5}.hint{font-size:11px;color:var(--muted)}.branch-options{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:-2px 0 14px}.branch-options .field{margin:0;flex:1;min-width:180px}.check-label{display:flex!important;align-items:center;gap:8px;white-space:nowrap}.check-label input{width:auto!important}
-    .result-empty{border:1px dashed #cbd5e1;border-radius:12px;padding:28px 18px;text-align:center;color:var(--muted);background:#fbfcfe}.result-empty strong{display:block;color:#334e68;margin-bottom:4px}.result-summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}.stat{border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:130px;flex:1}.stat small{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}.stat strong{font-size:15px}.badge{border-radius:99px;padding:4px 9px;font-size:11px;font-weight:700;display:inline-block}.badge.break{background:#fff1e8;color:#a44700}.badge.safe{background:#e7f6ef;color:#16734f}.badge.neutral{background:#edf2f7;color:#52667a}.file{border:1px solid var(--line);border-radius:11px;margin-top:12px;overflow:hidden}.file-title{padding:10px 12px;background:#f8fafc;font-weight:700;font-size:12px;display:flex;justify-content:space-between}.explanation{padding:10px 12px;color:#486581;font-size:12px;border-top:1px solid var(--line)}pre{margin:0;padding:13px;overflow:auto;background:#0b1220;color:#d5e4f5;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;max-height:360px;white-space:pre-wrap;word-break:break-word}.diff .minus{color:#ff9b9b}.diff .plus{color:#74e0aa}.diff .meta{color:#91a7c0}.workflow{padding:12px;border-top:1px solid var(--line);background:#fbfcfe}.workflow-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.workflow .primary,.workflow .secondary{font-size:12px;padding:8px 11px}.workflow input[type=checkbox]{width:auto}.workflow-check{display:flex;gap:8px;align-items:flex-start;color:#334e68;font-size:12px;margin:12px 0}.workflow-status{font-size:12px;color:#486581;margin:8px 0}.workflow-error{color:#a12622}.workflow-success{color:#16734f}.readiness{padding:9px 11px;background:#fff8e8;color:#775300;border-radius:8px;font-size:11px;margin:9px 0;white-space:pre-wrap}.review-meta{font-size:11px;color:var(--muted);margin:8px 0}
-    .side-stack{display:grid;gap:20px}.dvc-card{background:linear-gradient(135deg,#102a43,#174b71);color:white;border:0}.dvc-card .card-head{border-color:#ffffff22}.dvc-card .card-head p{color:#c5d4e2}.dvc-card .card-body{padding:18px 21px}.dvc-card .secondary{background:#fff;color:#163b5b}.dvc-note{font-size:11px;color:#d2dfeb;margin:11px 0 0}.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:13px}.metric{padding:10px;border:1px solid #ffffff28;border-radius:10px;background:#ffffff0c}.metric span{display:block;font-size:10px;color:#cad7e3}.metric b{font-size:18px}.runs{display:grid;gap:8px}.run{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;gap:8px;align-items:center}.run b{font-size:12px;display:block}.run small{font-size:10px;color:var(--muted)}.run-value{text-align:right;color:#315b83;font-size:12px;font-weight:700}.notice{padding:10px 12px;background:#fff8e8;color:#775300;border-radius:9px;font-size:11px;margin-top:12px}.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#102a43;color:white;border-radius:10px;padding:11px 16px;box-shadow:var(--shadow);display:none;z-index:5}.loading{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:12px}.spinner{width:15px;height:15px;border:2px solid #d6e2f2;border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-    @media(max-width:900px){.layout{grid-template-columns:1fr}.intro{align-items:start;flex-direction:column}.model-tag{white-space:normal}}@media(max-width:560px){main{padding:24px 14px}.two{grid-template-columns:1fr}.top-meta .pill:nth-child(2){display:none}.intro h1{font-size:26px}}
+    :root {
+      color-scheme: light;
+      --font-body: 16px;
+      --font-heading: 18px;
+      --ink: #17243c;
+      --muted: #65738b;
+      --line: #e1e7f0;
+      --paper: #f5f7fc;
+      --surface: #fff;
+      --blue: #315cf5;
+      --blue-dark: #2448d4;
+      --blue-soft: #eef2ff;
+      --green: #16865f;
+      --amber: #995500;
+      --red: #b42318;
+      --shadow: 0 18px 55px rgba(31, 48, 82, .07);
+      --radius: 20px;
+      --ease: cubic-bezier(.2, .75, .25, 1);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 92px; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 8% 8%, rgba(218, 228, 255, .65), transparent 31rem),
+        radial-gradient(ellipse at 96% 39%, rgba(226, 235, 255, .42), transparent 34rem),
+        var(--paper);
+      font: var(--font-body)/1.6 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; }
+
+    .scroll-track { position: fixed; inset: 0 0 auto; z-index: 10; height: 3px; pointer-events: none; }
+    .scroll-track span { display: block; width: 100%; height: 100%; background: linear-gradient(90deg, #5278ff, #8c6cff, #66b8ff); transform: scaleX(0); transform-origin: left; }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      min-height: 76px;
+      padding: 12px clamp(20px, 5vw, 72px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(225, 231, 240, .9);
+      background: rgba(250, 251, 255, .78);
+      backdrop-filter: blur(22px) saturate(150%);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; letter-spacing: -.035em; }
+    .brand-copy { display: grid; line-height: 1.05; }
+    .brand-name { display: flex; align-items: baseline; gap: 5px; font-size: 22px; letter-spacing: -.055em; white-space: nowrap; }
+    .brand-name strong { color: #172844; font-weight: 800; }
+    .brand-name span { color: var(--blue); font-weight: 500; }
+    .brand-copy small { margin-top: 5px; color: #40516a; font-size: 8px; font-weight: 700; letter-spacing: .2em; white-space: nowrap; }
+    .logo { width: 40px; height: 50px; display: block; }
+    .top-meta { display: flex; gap: 10px; align-items: center; }
+    .pill, .model-tag { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 99px; background: #fff; color: #4c5b75; font-size: 12px; padding: 8px 12px; }
+    .model-tag { border-radius: 11px; }
+    .model-tag b { color: var(--ink); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #adb9ca; }
+    .dot.ok { background: #22a477; box-shadow: 0 0 0 3px #22a47720; }
+    .dot.bad { background: #d64545; }
+
+    main { max-width: 1420px; margin: 0 auto; padding: 34px 34px 88px; }
+    .hero {
+      position: relative; isolation: isolate; overflow: hidden;
+      display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center;
+      min-height: 490px; margin-bottom: 24px; padding: clamp(34px, 5vw, 66px);
+      border: 1px solid rgba(255, 255, 255, .16); border-radius: 30px;
+      background: linear-gradient(118deg, #101d38 0%, #142748 53%, #1c3f68 100%);
+      box-shadow: 0 26px 70px rgba(19, 38, 73, .16);
+      color: #fff;
+    }
+    .hero::before, .hero::after { position: absolute; z-index: -1; content: ""; pointer-events: none; }
+    .hero::before {
+      inset: -48% -12% -60% 32%;
+      background: radial-gradient(ellipse at 55% 50%, rgba(91, 134, 255, .30), transparent 52%);
+      filter: blur(9px); animation: hero-glow 13s ease-in-out infinite alternate;
+    }
+    .hero::after {
+      inset: 0; opacity: .18;
+      background-image: linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px);
+      background-size: 58px 58px; mask-image: linear-gradient(90deg, transparent 8%, #000 70%);
+    }
+    .hero-copy { position: relative; z-index: 1; max-width: 620px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 9px; color: #c8d6ff; font-size: 10px; font-weight: 760; letter-spacing: .16em; text-transform: uppercase; }
+    .eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: #7ee3c0; box-shadow: 0 0 14px #7ee3c0; }
+    .hero h1 { max-width: 800px; margin: 17px 0 15px; font-size: clamp(46px, 4.6vw, 62px); line-height: .99; letter-spacing: -.065em; font-weight: 720; }
+    .hero h1 span { color: #91adff; }
+    .hero p { max-width: 560px; margin: 0; color: #c0cde2; font-size: clamp(14px, 1.45vw, 17px); line-height: 1.65; }
+    .hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 17px; margin-top: 26px; }
+    .hero-cta { display: inline-flex; align-items: center; gap: 16px; padding: 12px 16px 12px 19px; border: 1px solid rgba(255,255,255,.2); border-radius: 99px; background: #fff; color: #172844; text-decoration: none; font-size: var(--font-body); font-weight: 730; box-shadow: 0 8px 24px rgba(2,10,25,.18); transition: transform .35s var(--ease), box-shadow .35s var(--ease); }
+    .hero-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(2,10,25,.26); }
+    .hero-cta span { display: grid; width: 23px; height: 23px; place-items: center; border-radius: 50%; background: #edf1ff; color: var(--blue); font-size: 16px; line-height: 1; }
+    .hero-note { color: #aebdd5; font-size: 12px; }
+    .hero-note i { display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: #69d7ad; box-shadow: 0 0 12px #69d7ad99; }
+    .hero-art { position: relative; z-index: 1; display: flex; width: 100%; min-height: 300px; align-items: center; justify-content: flex-end; }
+    .hero-flow { position: relative; display: flex; width: 100%; max-width: 560px; flex-direction: column; align-items: stretch; gap: 17px; margin: 0 0 0 auto; }
+    .hero-flow::before { position: absolute; z-index: -1; inset: 6% 0; content: ""; border-radius: 35px; background: radial-gradient(ellipse at 60% 50%, rgba(100,139,231,.13), transparent 72%); filter: blur(18px); pointer-events: none; }
+    .hero-chip { position: relative; z-index: 1; display: flex; width: 100%; min-height: 78px; align-items: center; gap: 15px; padding: 14px 17px; border: 1px solid rgba(215, 227, 255, .28); border-radius: 21px; background: linear-gradient(145deg, rgba(27,48,82,.96), rgba(20,38,68,.86)); color: #e8efff; box-shadow: 0 15px 35px rgba(3,11,29,.24), inset 0 1px rgba(255,255,255,.08); backdrop-filter: blur(14px); font-size: var(--font-body); font-weight: 650; text-align: left; cursor: pointer; transition: transform .45s var(--ease), background .35s var(--ease), border-color .35s var(--ease), box-shadow .35s var(--ease); }
+    .hero-chip:hover, .hero-chip:focus-visible { transform: translateY(-4px) scale(1.025); border-color: rgba(194, 211, 255, .65); background: linear-gradient(145deg, rgba(41,67,111,.98), rgba(28,49,83,.94)); box-shadow: 0 20px 44px rgba(3,11,29,.34), 0 0 0 4px rgba(134,161,255,.13); }
+    .hero-chip:focus-visible { outline: 2px solid #c8d6ff; outline-offset: 4px; }
+    .hero-chip:active { transform: translateY(0) scale(.99); }
+    .hero-step-number { display: grid; width: 46px; height: 46px; flex: 0 0 auto; place-items: center; border: 1px solid rgba(169,190,255,.2); border-radius: 15px; background: rgba(139,166,255,.18); color: #b8c8ff; font-size: 15px; font-weight: 750; }
+    .hero-chip-copy { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+    .hero-chip-copy strong { font-size: var(--font-body); font-weight: 680; white-space: nowrap; }
+    .hero-chip-copy small { color: #b8c6dd; font-size: 14px; font-weight: 450; line-height: 1.4; }
+
+    .layout { display: grid; grid-template-columns: minmax(0, 1.22fr) minmax(285px, .78fr); align-items: start; gap: 22px; }
+    .card { overflow: hidden; border: 1px solid rgba(218, 226, 239, .9); border-radius: var(--radius); background: rgba(255,255,255,.92); box-shadow: var(--shadow); transition: box-shadow .35s var(--ease), border-color .35s var(--ease), transform .35s var(--ease); }
+    .card:hover { border-color: #d1dcf1; box-shadow: 0 24px 65px rgba(31,48,82,.10); }
+    .card-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 23px 17px; border-bottom: 1px solid #edf0f5; }
+    .card-head h2 { margin: 3px 0 0; font-size: var(--font-heading); letter-spacing: -.03em; }
+    .card-head p { margin: 3px 0 0; color: var(--muted); font-size: var(--font-body); }
+    .step-label { color: var(--blue); font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    .card-body { padding: 22px 23px; }
+    .field { margin-bottom: 17px; }
+    .field label { display: block; margin-bottom: 7px; color: #35445d; font-size: var(--font-body); font-weight: 690; }
+    .field input, .field textarea {
+      width: 100%; outline: none; border: 1px solid #d8e0ed; border-radius: 13px;
+      padding: 12px 14px; background: #fff; color: var(--ink); transition: border .22s var(--ease), box-shadow .22s var(--ease), background .22s var(--ease);
+    }
+    .field input { min-height: 48px; }
+    .field textarea { min-height: 88px; resize: vertical; }
+    .field input:focus, .field textarea:focus { border-color: #86a0ff; box-shadow: 0 0 0 4px rgba(49, 92, 245, .1); }
+    .field input::placeholder, .field textarea::placeholder { color: #9aa6b8; }
+    .branch-options { display: flex; align-items: end; flex-wrap: wrap; gap: 13px; margin: -1px 0 7px; }
+    .branch-options .field { flex: 1; min-width: 190px; margin: 0; }
+    .check-label { display: flex !important; align-items: center; gap: 8px; min-height: 46px; color: #465570 !important; white-space: nowrap; }
+    .check-label input, .workflow input[type=checkbox] { width: auto !important; accent-color: var(--blue); }
+    .button-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 19px; }
+    .primary, .secondary { border: 0; border-radius: 12px; padding: 11px 16px; font-weight: 720; transition: transform .22s var(--ease), background .22s var(--ease), box-shadow .22s var(--ease); }
+    .primary { color: #fff; background: linear-gradient(135deg, #3d68ff, #2d52e8); box-shadow: 0 7px 16px rgba(49, 92, 245, .18); }
+    .primary:hover:not(:disabled) { transform: translateY(-1px); background: var(--blue-dark); box-shadow: 0 10px 20px rgba(49, 92, 245, .22); }
+    .primary:disabled { opacity: .58; cursor: wait; }
+    .secondary { color: #2349ce; background: var(--blue-soft); }
+    .secondary:hover:not(:disabled) { background: #e2eaff; }
+    .hint { color: var(--muted); font-size: 14px; }
+
+    .result-empty { padding: 31px 20px; border: 1px dashed #cdd7e7; border-radius: 15px; background: #fafbfe; color: var(--muted); text-align: center; }
+    .result-empty strong { display: block; margin-bottom: 5px; color: #354b6a; font-size: 14px; }
+    .result-summary { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+    .stat { flex: 1; min-width: 120px; padding: 12px 13px; border: 1px solid var(--line); border-radius: 13px; background: #fcfdff; }
+    .stat small { display: block; margin-bottom: 4px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+    .stat strong { font-size: 16px; overflow-wrap: anywhere; }
+    .badge { display: inline-flex; align-items: center; border-radius: 99px; padding: 5px 10px; font-size: 11px; font-weight: 740; }
+    .badge.break { color: #9a4800; background: #fff0e4; }
+    .badge.safe { color: #16734f; background: #e7f6ef; }
+    .badge.neutral { color: #596981; background: #f0f3f8; }
+    .severity-high, .severity-critical { color: #a23b27; background: #fff0ea; }
+    .severity-medium { color: #8a5a05; background: #fff7df; }
+    .severity-low, .severity-info { color: #365f9f; background: #eef4ff; }
+    .finding-title { min-width: 0; overflow-wrap: anywhere; font-size: var(--font-heading); }
+    .finding-accordion { overflow: hidden; margin-top: 12px; border: 1px solid var(--line); border-radius: 15px; background: #fff; box-shadow: 0 8px 22px rgba(31,48,82,.035); }
+    .finding-accordion-trigger { display: flex; min-height: 68px; align-items: center; gap: 12px; padding: 15px 17px; background: #f8faff; cursor: pointer; list-style: none; }
+    .finding-accordion-trigger::-webkit-details-marker { display: none; }
+    .finding-accordion-trigger::after { width: 9px; height: 9px; flex: 0 0 auto; margin: 0 3px 5px auto; border-right: 2px solid #71809a; border-bottom: 2px solid #71809a; content: ""; transform: rotate(45deg); transition: transform .25s var(--ease), margin .25s var(--ease); }
+    .finding-accordion[open] > .finding-accordion-trigger { border-bottom: 1px solid #e9eef6; }
+    .finding-accordion[open] > .finding-accordion-trigger::after { margin-bottom: -5px; transform: rotate(225deg); }
+    .finding-accordion-trigger:focus-visible { outline: 3px solid rgba(49,92,245,.36); outline-offset: -3px; }
+    .finding-panel { padding: 0 16px 16px; }
+    .finding-section { margin-top: 12px; padding: 14px 16px; border: 1px solid #e2e8f1; border-radius: 11px; background: #fbfcff; }
+    .finding-section-copy { color: #53627b; font-size: var(--font-body); line-height: 1.6; overflow-wrap: anywhere; white-space: pre-line; }
+    .finding-actions { display: flex; justify-content: flex-end; padding: 12px 0; }
+    .copy-label { display: block; margin-bottom: 3px; color: #263956; font-size: 11px; font-weight: 760; letter-spacing: .08em; text-transform: uppercase; }
+    .file { overflow: hidden; margin-top: 12px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+    .file-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; background: #f8faff; font-size: 13px; font-weight: 720; overflow-wrap: anywhere; }
+    .explanation { padding: 11px 14px; border-top: 1px solid #edf0f5; color: #53627b; font-size: var(--font-body); overflow-wrap: anywhere; }
+    pre { max-height: 360px; overflow: auto; margin: 0; padding: 15px; background: #121a2a; color: #d7e2f1; font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-word; }
+    .diff .minus { color: #ff9898; }
+    .diff .plus { color: #75e0ae; }
+    .diff .meta { color: #91a7c0; }
+    .workflow { padding: 16px; border-top: 1px solid var(--line); background: #fbfcff; }
+    .workflow:empty { display: none; }
+    .workflow > strong { display: block; margin-bottom: 8px; font-size: var(--font-heading); line-height: 1.35; }
+    .workflow > .workflow-status { margin: 8px 0 12px; line-height: 1.5; }
+    .workflow > .diff { display: block; width: 100%; margin: 12px 0; padding: 14px 16px; border-radius: 12px; }
+    .workflow > .verification { margin: 12px 0; padding: 11px 14px; line-height: 1.5; }
+    .workflow-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+    .workflow .primary, .workflow .secondary, .finding-actions > .secondary {
+      display: inline-flex; width: 260px; max-width: 100%; min-height: 48px; flex: 0 1 260px;
+      align-items: center; justify-content: center; padding: 11px 16px;
+      font-size: var(--font-body); line-height: 1.3; text-align: center; white-space: normal;
+    }
+    .workflow-check { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0; color: #35445d; font-size: var(--font-body); }
+    .workflow-status { margin: 8px 0; color: #52627b; font-size: 14px; }
+    .workflow-error { color: #a12622; }
+    .workflow-success { color: #16734f; }
+    .readiness { margin: 9px 0; padding: 10px 12px; border-radius: 10px; background: #fff7e8; color: #775300; font-size: 14px; white-space: pre-wrap; }
+    .review-meta, .scan-meta { margin: 9px 0; color: var(--muted); font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+    .scan-meta { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fafbfe; }
+    .verification { margin: 9px 0; padding: 9px 12px; border-radius: 10px; font-size: 11px; }
+    .verification.verified { color: #16734f; background: #e7f6ef; }
+    .verification.recheck { color: #164eb5; background: #edf5ff; }
+    .verification.warning { color: #775300; background: #fff8e8; }
+    .verification.failed { color: #a12622; background: #fff1e8; }
+    .resolution-title { margin: 22px 0 4px; color: var(--green); font-size: 14px; }
+
+    .side-stack { position: sticky; top: 96px; display: grid; gap: 16px; }
+    .steps { display: grid; gap: 17px; margin: 0; padding: 2px 0; list-style: none; }
+    .steps li { display: grid; grid-template-columns: 35px 1fr; align-items: start; gap: 12px; }
+    .step-number { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid #dfe7ff; border-radius: 11px; background: #f4f6ff; color: var(--blue); font-size: 10px; font-weight: 770; }
+    .steps strong { display: block; margin: 1px 0 2px; font-size: var(--font-heading); }
+    .steps small { display: block; color: var(--muted); font-size: var(--font-body); line-height: 1.5; }
+    .safe-card { padding: 20px; background: linear-gradient(145deg, #182b4d, #243f70); color: #fff; }
+    .safe-icon { width: 36px; height: 36px; display: grid; place-items: center; margin-bottom: 12px; border: 1px solid #ffffff30; border-radius: 12px; background: #ffffff12; font-size: 17px; }
+    .safe-card h3 { margin: 0 0 6px; font-size: var(--font-heading); }
+    .safe-card p { margin: 0; color: #d0d9e8; font-size: var(--font-body); line-height: 1.6; }
+    .notice { margin-top: 14px; padding: 12px 14px; border: 1px solid #f1e2bb; border-radius: 12px; background: #fff9eb; color: #7b590e; font-size: 11px; }
+    .toast { position: fixed; z-index: 5; bottom: 20px; left: 50%; display: none; max-width: min(520px, calc(100vw - 30px)); transform: translateX(-50%); padding: 11px 16px; border-radius: 11px; background: #182640; color: white; box-shadow: var(--shadow); }
+    .loading { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 12px; }
+    .spinner { width: 15px; height: 15px; border: 2px solid #d6e2f2; border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes orbit-turn { to { transform: rotate(360deg); } }
+    @keyframes core-float { 0%, 100% { transform: translateY(0) rotate(-7deg); } 50% { transform: translateY(-9px) rotate(-4deg); } }
+    @keyframes hero-glow { from { transform: translate3d(-2%, -1%, 0) scale(.94); opacity: .7; } to { transform: translate3d(2%, 1%, 0) scale(1.08); opacity: 1; } }
+    .motion-ready .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
+    .motion-ready .reveal.is-visible { opacity: 1; transform: translateY(0); }
+    .motion-ready .reveal-delay { transition-delay: .12s; }
+    .result-arrive { animation: result-arrive .55s var(--ease) both; }
+    @keyframes result-arrive { from { opacity: .35; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 980px) {
+      main { padding: 26px 22px 70px; }
+      .hero { grid-template-columns: 1fr; min-height: 0; padding: 42px; }
+      .hero-art { min-height: 0; }
+      .hero-flow { max-width: 700px; }
+      .layout { grid-template-columns: 1fr; }
+      .side-stack { position: static; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+      .side-stack > .card:first-child { grid-row: span 2; }
+    }
+    @media (max-width: 800px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero-art { min-height: 0; }
+    }
+    @media (max-width: 680px) {
+      html { scroll-padding-top: 78px; }
+      main { padding: 18px 14px 54px; }
+      header { min-height: 66px; padding: 10px 15px; gap: 10px; }
+      .brand { gap: 8px; }
+      .brand-name { gap: 3px; font-size: 17px; }
+      .logo { width: 32px; height: 40px; }
+      .brand-copy small { display: none; }
+      .hero { grid-template-columns: 1fr; gap: 2px; min-height: 0; padding: 31px 24px 22px; border-radius: 24px; }
+      .hero h1 { max-width: 520px; margin-top: 14px; font-size: clamp(42px, 11vw, 58px); }
+      .hero p { max-width: 470px; font-size: var(--font-body); }
+      .hero-actions { gap: 12px; margin-top: 21px; }
+      .hero-note { font-size: 10px; }
+      .hero-art { min-height: 0; margin-top: 25px; }
+      .hero-flow { gap: 12px; }
+      .hero-chip { width: 100%; min-height: 64px; gap: 10px; padding: 10px 11px; border-radius: 17px; }
+      .hero-step-number { width: 38px; height: 38px; border-radius: 12px; font-size: 13px; }
+      .hero-chip-copy strong { font-size: var(--font-body); }
+      .hero-chip-copy small { font-size: 13px; }
+      .top-meta { gap: 6px; }
+      .model-tag { max-width: 145px; overflow: hidden; padding: 7px 9px; font-size: 10px; white-space: nowrap; text-overflow: ellipsis; }
+      .pill { padding: 7px 9px; font-size: 11px; }
+      .card-head, .card-body { padding-left: 17px; padding-right: 17px; }
+      .branch-options .field { min-width: 100%; }
+      .check-label { min-height: 32px; }
+      .stat { min-width: calc(50% - 8px); }
+      .side-stack { grid-template-columns: 1fr; }
+      .side-stack > .card:first-child { grid-row: auto; }
+    }
+    @media (max-width: 400px) {
+      .model-tag { display: none; }
+      .hero { padding-right: 18px; padding-left: 18px; }
+      .hero-chip { width: 100%; min-height: 58px; gap: 8px; padding: 8px; }
+      .hero-step-number { width: 33px; height: 33px; }
+      .hero-chip-copy strong { font-size: var(--font-body); line-height: 1.25; white-space: normal; }
+      .hero-chip-copy small { font-size: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+      .motion-ready .reveal { opacity: 1; transform: none; }
+    }
   </style>
 </head>
 <body>
+  <div class="scroll-track" aria-hidden="true"><span id="scrollProgress"></span></div>
   <header>
-    <div class="brand"><div class="logo">A</div>API Guardian</div>
-    <div class="top-meta"><span class="pill"><i class="dot" id="apiDot"></i>API <span id="apiState">checking</span></span><span class="pill"><i class="dot" id="mlflowDot"></i>MLflow <span id="mlflowState">checking</span></span><span class="pill"><i class="dot" id="dvcDot"></i>DVC <span id="dvcState">checking</span></span></div>
+    <div class="brand">
+      <img class="logo" src="/favicon.svg" alt="" aria-hidden="true">
+      <span class="brand-copy"><span class="brand-name"><strong>API</strong><span>Guardian</span></span><small>PROTECT EVERY REQUEST</small></span>
+    </div>
+    <div class="top-meta">
+      <span class="pill"><i class="dot" id="apiDot"></i>API <span id="apiState">checking</span></span>
+      <span class="model-tag">Local model <b id="ollamaModel">gemma3:4b</b></span>
+    </div>
   </header>
   <main>
-    <div class="intro"><div><div class="eyebrow">Self-maintaining API workspace</div><h1>Scan. Detect. Repair.</h1><p>Give API Guardian a GitHub repository. It discovers API clients and dependencies, audits likely compatibility issues, and proposes reviewable fixes.</p></div><div class="model-tag">Local model · <b id="ollamaModel">gemma3:4b</b></div></div>
+    <section class="hero reveal">
+      <div class="hero-copy">
+        <div class="eyebrow"><i class="eyebrow-dot"></i>API compatibility · automated review</div>
+        <h1>Keep API changes<br><span>safe to ship.</span></h1>
+        <p>Scan a GitHub repository, inspect evidence-backed risks, and prepare fixes you can review before publishing.</p>
+        <div class="hero-actions">
+          <a class="hero-cta" href="#repository-audit">Start a repository scan <span aria-hidden="true">↓</span></a>
+          <small class="hero-note"><i></i>Nothing publishes without your approval</small>
+        </div>
+      </div>
+      <div class="hero-art" role="group" aria-label="Interactive API Guardian workflow">
+        <div class="hero-flow">
+        <button class="hero-chip chip-top" type="button" data-workflow-step="scan" aria-label="Step 1: start a repository scan"><span class="hero-step-number">01</span><span class="hero-chip-copy"><strong>Detect API drift</strong><small>Find API clients and outdated dependency versions.</small></span></button>
+        <button class="hero-chip chip-bottom" type="button" data-workflow-step="review" aria-label="Step 2: review findings"><span class="hero-step-number">02</span><span class="hero-chip-copy"><strong>Review a fix</strong><small>Inspect evidence, severity, and fixes before deciding.</small></span></button>
+        <button class="hero-chip chip-final" type="button" data-workflow-step="publish" aria-label="Step 3: prepare and approve a draft pull request"><span class="hero-step-number">03</span><span class="hero-chip-copy"><strong>Approve &amp; publish</strong><small>Approve changes and open a draft PR.</small></span></button>
+        </div>
+      </div>
+    </section>
     <div class="layout">
-      <section class="card">
-        <div class="card-head"><div><h2>Repository audit</h2><p>Public repositories are cloned to a temporary workspace.</p></div><span class="badge neutral">Proposal only</span></div>
+      <section class="card" id="repository-audit">
+        <div class="card-head"><div><span class="step-label">01 / Repository</span><h2>Scan a repository</h2><p>Public repositories are inspected in a temporary workspace.</p></div><span class="badge neutral">Read-only scan</span></div>
         <div class="card-body">
           <form id="scanForm">
-            <div class="field"><label for="repoUrl">GitHub repository URL</label><input id="repoUrl" type="url" value="https://github.com/sneha0832/notion-task-manager-test" placeholder="https://github.com/owner/repository" required></div>
-            <div class="field"><label for="changelog">API changelog or release notes <span class="hint">(optional, recommended for targeted audits)</span></label><textarea id="changelog" placeholder="Paste the API's release notes or describe the breaking change to check for. Without this, the audit reports only risks it can verify from detected API usage and dependency manifests."></textarea></div>
-            <div class="branch-options"><div class="field"><label for="branch">Branch (when scanning one branch)</label><input id="branch" placeholder="Leave blank for default branch"></div><label class="check-label"><input type="checkbox" id="allBranches" checked> Scan every branch</label><span class="hint">Scanning all branches takes longer.</span></div>
-            <div class="button-row"><button class="primary" id="scanButton" type="submit">Audit repository</button><span class="hint">Scans supported source files; adding release notes helps target the audit.</span></div>
+            <div class="field"><label for="repoUrl">GitHub repository URL</label><input id="repoUrl" type="url" placeholder="https://github.com/owner/repository" required></div>
+            <div class="field"><label for="changelog">API change details <span class="hint">· optional</span></label><textarea id="changelog" placeholder="Paste release notes or describe a breaking API change to focus the audit. Leave blank for a general compatibility scan."></textarea></div>
+            <div class="branch-options">
+              <div class="field"><label for="branch">Branch</label><input id="branch" placeholder="Leave blank for the default branch"></div>
+              <label class="check-label"><input type="checkbox" id="allBranches" checked> Scan every branch</label>
+            </div>
+            <div class="button-row"><button class="primary" id="scanButton" type="submit">Audit repository</button><span class="hint">Scans never write to GitHub.</span></div>
           </form>
-          <div id="scanProgress" class="loading" style="display:none;margin-top:16px"><i class="spinner"></i><span>Checking every supported source file on the selected branch(es). Local AI reviews likely matches; scanning every branch takes longer…</span></div>
-          <div id="scanResult" style="margin-top:20px"><div class="result-empty"><strong>Ready for an API audit</strong>Paste a public GitHub repository link and run a scan.</div></div>
+          <div id="scanProgress" class="loading" style="display:none;margin-top:16px"><i class="spinner"></i><span>Scanning supported source files and checking likely API compatibility issues…</span></div>
+          <div id="scanResult" style="margin-top:22px"><div class="result-empty"><strong>Ready for an API audit</strong>Enter a public GitHub repository link to get started.</div></div>
         </div>
       </section>
 
       <aside class="side-stack">
-        <section class="card dvc-card">
-          <div class="card-head"><div><h2>DVC evaluation</h2><p>Reproduce the versioned dataset baseline.</p></div><span class="badge" style="background:#ffffff20;color:white">Fixture baseline</span></div>
-          <div class="card-body"><div class="dvc-note">Runs the evaluation stage from <code>dvc.yaml</code>, then logs the report to MLflow. Fixture scores are a pipeline smoke test, not live-agent performance.</div><div class="button-row"><button class="secondary" id="dvcButton" type="button" disabled>Run DVC baseline</button><span class="hint" id="dvcSummary" style="color:#d2dfeb"></span></div><div id="dvcMetrics"></div></div>
-        </section>
         <section class="card">
-          <div class="card-head"><div><h2>MLflow runs</h2><p>Local experiment history for scans and evaluations.</p></div><button class="secondary" id="refreshRuns" type="button">Refresh</button></div>
-          <div class="card-body"><div id="runs" class="runs"><span class="hint">Loading recent runs…</span></div></div>
+          <div class="card-head"><div><span class="step-label">How it works</span><h2>From scan to safe fix</h2></div></div>
+          <div class="card-body">
+            <ol class="steps">
+              <li><span class="step-number">01</span><span><strong>Find API usage</strong><small>Inspect source files, dependency versions, and supported API clients.</small></span></li>
+              <li><span class="step-number">02</span><span><strong>Understand the risk</strong><small>Review the evidence, affected file, and severity for each finding.</small></span></li>
+              <li><span class="step-number">03</span><span><strong>Review a fix</strong><small>Validate the proposed diff, then choose whether to publish a draft PR.</small></span></li>
+            </ol>
+          </div>
         </section>
-        <div class="notice">Nothing is sent to GitHub until you review the exact diff, check the approval box, and choose “Approve &amp; publish draft PR.” API Guardian publishes a migration branch and draft PR; it never merges the change.</div>
+        <section class="card safe-card">
+          <div class="safe-icon" aria-hidden="true">✓</div>
+          <h3>You stay in control</h3>
+          <p>API Guardian shows the exact changes before publishing. It can open a draft pull request after approval, but never merges it.</p>
+        </section>
       </aside>
     </div>
   </main>
   <div class="toast" id="toast"></div>
   <script>
     const $ = (id) => document.getElementById(id);
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (!reducedMotion) {
+      document.documentElement.classList.add('motion-ready');
+      if ('IntersectionObserver' in window) {
+        const revealObserver = new IntersectionObserver((entries, observer) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('is-visible');
+              observer.unobserve(entry.target);
+            }
+          }
+        }, { threshold: 0, rootMargin: '0px 0px -36px 0px' });
+        document.querySelectorAll('.reveal').forEach((element) => revealObserver.observe(element));
+      } else {
+        document.querySelectorAll('.reveal').forEach((element) => element.classList.add('is-visible'));
+      }
+    }
+
+    const scrollProgress = $('scrollProgress');
+    let scrollUpdatePending = false;
+    function updateScrollProgress() {
+      if (scrollUpdatePending) return;
+      scrollUpdatePending = true;
+      window.requestAnimationFrame(() => {
+        const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const progress = scrollableHeight > 0 ? window.scrollY / scrollableHeight : 0;
+        scrollProgress.style.transform = `scaleX(${Math.min(1, Math.max(0, progress))})`;
+        scrollUpdatePending = false;
+      });
+    }
+    window.addEventListener('scroll', updateScrollProgress, { passive: true });
+    window.addEventListener('resize', updateScrollProgress);
+    updateScrollProgress();
+
     const toast = (message) => {
       const element = $('toast');
       element.textContent = message;
       element.style.display = 'block';
       window.setTimeout(() => { element.style.display = 'none'; }, 3500);
     };
+
+    function followWorkflowStep(step) {
+      const scanResult = $('scanResult');
+      const hasScan = Boolean(scanResult.querySelector('.result-summary'));
+      let target;
+
+      if (step === 'scan') {
+        target = $('repoUrl');
+      } else if (step === 'review') {
+        target = document.querySelector('.finding-card') || scanResult;
+        if (!hasScan) toast('Run a repository audit first to load findings for review.');
+      } else {
+        target = document.querySelector('[data-review-step="publish"]:not(:disabled)')
+          || document.querySelector('[data-review-step="prepare"]:not(:disabled)')
+          || document.querySelector('.finding-card')
+          || scanResult;
+        if (!document.querySelector('[data-review-step="publish"], [data-review-step="prepare"]')) {
+          toast(hasScan
+            ? 'Generate a safe fix from a finding to prepare a draft pull request.'
+            : 'Run an audit and generate a safe fix before preparing a draft pull request.');
+        }
+      }
+
+      if (!target) return;
+      target.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center' });
+      if (!target.matches('input, button, a, textarea')) target.tabIndex = -1;
+      window.setTimeout(() => target.focus({ preventScroll: true }), reducedMotion ? 0 : 420);
+    }
+
+    document.querySelectorAll('[data-workflow-step]').forEach((button) => {
+      button.addEventListener('click', () => followWorkflowStep(button.dataset.workflowStep));
+    });
 
     async function api(path, options = {}) {
       const response = await fetch(path, options);
@@ -80,31 +449,13 @@
     }
 
     async function loadStatus() {
-      const health = api('/health')
-        .then(() => setStatus('api', true, 'online'))
-        .catch(() => setStatus('api', false, 'offline'));
-      const mlops = api('/api/mlops/status')
-        .then((status) => {
-          $('ollamaModel').textContent = status.ollama_model || 'gemma3:4b';
-          setStatus('mlflow', status.mlflow_available, status.mlflow_available ? 'ready' : 'install');
-          const dvcReady = status.dvc_available && status.evaluation_config_available;
-          setStatus(
-            'dvc',
-            dvcReady,
-            dvcReady ? 'ready' : status.dvc_available ? 'config issue' : 'install',
-          );
-          $('dvcButton').disabled = !dvcReady;
-          if (status.evaluation_config_error) {
-            $('dvcSummary').textContent = status.evaluation_config_error;
-          }
-        })
-        .catch(() => {
-          setStatus('mlflow', false, 'unavailable');
-          setStatus('dvc', false, 'unavailable');
-          $('dvcButton').disabled = true;
-          $('dvcSummary').textContent = 'Could not check DVC readiness.';
-        });
-      await Promise.all([health, mlops]);
+      try {
+        const status = await api('/health');
+        $('ollamaModel').textContent = status.model || 'gemma3:4b';
+        setStatus('api', true, 'online');
+      } catch {
+        setStatus('api', false, 'offline');
+      }
     }
 
     function makeDiff(original, updated) {
@@ -169,10 +520,11 @@
       container.replaceChildren(message);
     }
 
-    async function startFixWorkflow(container, finding, existingChange, repository) {
+    async function startFixWorkflow(container, finding, existingChange, repository, scanRevision) {
       const { owner, repo } = repositoryParts(repository);
       const branch = finding.branch || null;
       let changes = existingChange ? [existingChange] : null;
+      let proposal = null;
       container.replaceChildren();
       const working = document.createElement('div');
       working.className = 'loading';
@@ -181,7 +533,7 @@
 
       try {
         if (!changes) {
-          const proposal = await api('/api/migrations/fix', {
+          proposal = await api('/api/migrations/fix', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -195,6 +547,7 @@
               problem: finding.explanation,
               recommendation: finding.recommendation,
               changelog: $('changelog').value.trim(),
+              expected_commit_sha: scanRevision?.commit_sha || null,
             }),
           });
           changes = Array.isArray(proposal.changes) && proposal.changes.length
@@ -203,6 +556,13 @@
         }
 
         if (!changes || !changes.length) throw new Error('The repair agent returned no proposed changes.');
+        const verificationStatus = existingChange
+          ? finding.verification_status
+          : proposal?.verification_status;
+        const verificationMessage = existingChange
+          ? finding.verification_message
+          : proposal?.verification_message;
+        const expectedBaseSha = proposal?.base_commit_sha || scanRevision?.commit_sha || null;
         for (const change of changes) {
           if (!change.branch) change.branch = branch;
         }
@@ -218,17 +578,44 @@
           candidateDiff.append(...makeDiff(change.original_code, change.updated_code));
           container.append(candidateTitle, candidateNote, candidateDiff);
         }
+        const verification = document.createElement('div');
+        const verificationPassed = ['verified', 'recheck_passed'].includes(verificationStatus);
+        const verificationBlocked = verificationStatus === 'still_detected';
+        verification.className = `verification ${verificationPassed ? (verificationStatus === 'verified' ? 'verified' : 'recheck') : (verificationBlocked ? 'failed' : 'warning')}`;
+        verification.textContent = `${verificationStatus || 'unverified'} · ${verificationMessage || 'The proposed change needs a manual check.'}`;
+        container.append(verification);
 
         const prepareRow = document.createElement('div');
         prepareRow.className = 'workflow-actions';
         const prepareButton = document.createElement('button');
         prepareButton.type = 'button';
         prepareButton.className = 'secondary';
+        prepareButton.dataset.reviewStep = 'prepare';
         prepareButton.textContent = 'Prepare exact GitHub review';
+        prepareButton.disabled = verificationBlocked || !expectedBaseSha;
         const status = document.createElement('span');
         status.className = 'hint';
         prepareRow.append(prepareButton, status);
         container.append(prepareRow);
+
+        if (!verificationPassed && !verificationBlocked) {
+          const manualReview = document.createElement('label');
+          manualReview.className = 'workflow-check';
+          const acknowledge = document.createElement('input');
+          acknowledge.type = 'checkbox';
+          const acknowledgementText = document.createElement('span');
+          acknowledgementText.textContent = 'I manually checked this patch because the automatic recheck could not confirm it.';
+          manualReview.append(acknowledge, acknowledgementText);
+          container.insertBefore(manualReview, prepareRow);
+          acknowledge.addEventListener('change', () => {
+            prepareButton.disabled = !acknowledge.checked || !expectedBaseSha;
+          });
+        }
+        if (verificationBlocked) {
+          status.textContent = 'Publishing is blocked because the finding remains in the proposed code.';
+        } else if (!expectedBaseSha) {
+          status.textContent = 'A scanned commit SHA is missing. Run a fresh audit before preparing this review.';
+        }
 
         prepareButton.addEventListener('click', async () => {
           prepareButton.disabled = true;
@@ -245,6 +632,7 @@
                 changes,
                 summary: `API Guardian: ${finding.title}`,
                 base_branch: branch || $('branch').value.trim() || 'main',
+                expected_base_commit_sha: expectedBaseSha,
                 commit_message: `fix: ${finding.title}`.slice(0, 120),
               }),
             });
@@ -276,6 +664,7 @@
             const publishButton = document.createElement('button');
             publishButton.type = 'button';
             publishButton.className = 'primary';
+            publishButton.dataset.reviewStep = 'publish';
             publishButton.textContent = 'Approve & publish draft PR';
             publishButton.disabled = !review.publish_ready;
             approval.addEventListener('change', () => {
@@ -305,6 +694,34 @@
                 link.rel = 'noopener noreferrer';
                 link.textContent = `Open draft PR #${published.pull_request_number}`;
                 publishStatus.append(link);
+                const followUp = document.createElement('div');
+                followUp.className = 'workflow-actions';
+                const auditPublished = document.createElement('button');
+                auditPublished.type = 'button';
+                auditPublished.className = 'secondary';
+                auditPublished.textContent = 'Audit published branch';
+                auditPublished.addEventListener('click', () => {
+                  void runRepositoryAudit({
+                    repoUrl: `https://github.com/${owner}/${repo}`,
+                    branch: published.branch_name,
+                    allBranches: false,
+                    changelog: '',
+                  });
+                });
+                const auditBase = document.createElement('button');
+                auditBase.type = 'button';
+                auditBase.className = 'secondary';
+                auditBase.textContent = `Recheck ${review.base_branch} after merge`;
+                auditBase.addEventListener('click', () => {
+                  void runRepositoryAudit({
+                    repoUrl: `https://github.com/${owner}/${repo}`,
+                    branch: review.base_branch,
+                    allBranches: false,
+                    changelog: '',
+                  });
+                });
+                followUp.append(auditPublished, auditBase);
+                reviewArea.append(followUp);
               } catch (error) {
                 publishButton.disabled = false;
                 publishStatus.className = 'workflow-status workflow-error';
@@ -325,12 +742,31 @@
     function renderScan(result) {
       const root = $('scanResult');
       root.replaceChildren();
+      root.classList.remove('result-arrive');
+      void root.offsetWidth;
+      root.classList.add('result-arrive');
       const usages = result.api_usages || [];
       const findings = result.findings || [];
       const changes = result.affected_files || [];
+      const renderedChanges = new Set();
+      const makeChangeCard = (file) => {
+        const card = document.createElement('div');
+        card.className = 'file';
+        const title = document.createElement('div');
+        title.className = 'file-title';
+        title.textContent = file.branch ? `${file.branch} · ${file.file_path}` : file.file_path;
+        const diff = document.createElement('pre');
+        diff.className = 'diff';
+        diff.append(...makeDiff(file.original_code, file.updated_code));
+        const explanation = document.createElement('div');
+        explanation.className = 'explanation';
+        explanation.textContent = file.explanation;
+        card.append(title, diff, explanation);
+        return card;
+      };
       const summary = document.createElement('div');
       summary.className = 'result-summary';
-      addStat(summary, 'External API use', result.api_detected ? 'Detected' : 'Not detected', result.api_detected ? 'break' : 'safe');
+      addStat(summary, 'External API use', result.api_detected ? 'Detected' : 'Not detected', result.api_detected ? 'neutral' : 'safe');
       addStat(summary, 'API call sites', String(usages.length));
       addStat(summary, 'Potential issues', String(findings.length));
       addStat(summary, 'Scan status', result.status || 'completed');
@@ -340,13 +776,19 @@
       summaryText.className = 'hint';
       summaryText.textContent = result.summary || 'Scan completed.';
       root.append(summaryText);
-      if (result.mlflow_run_id) {
-        const tracking = document.createElement('p');
-        tracking.className = 'hint';
-        tracking.textContent = `Tracked in MLflow · ${result.mlflow_run_id.slice(0, 12)}`;
-        root.append(tracking);
+      const revisions = result.scanned_revisions || [];
+      if (revisions.length) {
+        const revisionMeta = document.createElement('div');
+        revisionMeta.className = 'scan-meta';
+        revisionMeta.textContent = `Scanned commit${revisions.length === 1 ? '' : 's'}: ${revisions.map((revision) => `${revision.branch}@${String(revision.commit_sha || '').slice(0, 12)}`).join(' · ')} · Scan ${String(result.scan_id || '').slice(0, 8)}`;
+        root.append(revisionMeta);
       }
-
+      if (result.history_message) {
+        const historyMessage = document.createElement('p');
+        historyMessage.className = `workflow-status ${result.history_reconciled ? 'workflow-success' : ''}`;
+        historyMessage.textContent = result.history_message;
+        root.append(historyMessage);
+      }
       for (const usage of usages) {
         const card = document.createElement('div');
         card.className = 'file';
@@ -360,38 +802,130 @@
         root.append(card);
       }
 
-      for (const finding of findings) {
-        const card = document.createElement('div');
-        card.className = 'file';
-        const title = document.createElement('div');
-        title.className = 'file-title';
-        title.textContent = `${(finding.severity || 'info').toUpperCase()} · ${finding.title} · ${finding.branch || 'branch?'}:${finding.file_path}`;
-        const problem = document.createElement('div');
-        problem.className = 'explanation';
-        problem.textContent = `Problem: ${finding.explanation}`;
-        const recommendation = document.createElement('div');
-        recommendation.className = 'explanation';
-        recommendation.textContent = `Suggested fix: ${finding.recommendation || 'No verified remediation was returned.'}`;
-        const evidence = document.createElement('div');
-        evidence.className = 'hint';
-        evidence.style.padding = '8px 12px';
-        evidence.textContent = `Evidence: ${finding.evidence}`;
-        const existingChange = changes.find((change) =>
-          change.file_path === finding.file_path && change.branch === finding.branch,
+      for (const [findingIndex, finding] of findings.entries()) {
+        const card = document.createElement('details');
+        card.className = 'finding-card finding-accordion';
+        card.open = findingIndex === 0;
+        const header = document.createElement('summary');
+        header.className = 'finding-accordion-trigger';
+        const requestedSeverity = String(finding.severity || 'info').toLowerCase();
+        const severity = ['critical', 'high', 'medium', 'low', 'info'].includes(requestedSeverity)
+          ? requestedSeverity
+          : 'info';
+        const priority = document.createElement('span');
+        priority.className = `badge severity-${severity}`;
+        priority.textContent = severity.toUpperCase();
+        const findingTitle = document.createElement('span');
+        findingTitle.className = 'finding-title';
+        findingTitle.textContent = `${finding.title} · ${finding.branch || 'branch?'}:${finding.file_path}`;
+        header.append(priority, findingTitle);
+        const panel = document.createElement('div');
+        panel.className = 'finding-panel';
+        const sameFindingLocation = (change) =>
+          change.file_path === finding.file_path
+          && (!change.branch || change.branch === finding.branch);
+        let matchingChanges = changes.filter((change) =>
+          sameFindingLocation(change)
+          && (
+            (finding.proposed_code && change.updated_code === finding.proposed_code)
+            || String(change.explanation || '').startsWith(`${finding.title}:`)
+          ),
         );
+        if (!matchingChanges.length) {
+          const locationChanges = changes.filter(sameFindingLocation);
+          const findingsAtLocation = findings.filter((item) =>
+            item.file_path === finding.file_path && item.branch === finding.branch,
+          );
+          if (locationChanges.length === 1 && findingsAtLocation.length === 1) {
+            matchingChanges = locationChanges;
+          }
+        }
+        const existingChange = matchingChanges[0] || null;
+        const addFindingSection = (label, value) => {
+          const section = document.createElement('section');
+          section.className = 'finding-section';
+          const sectionLabel = document.createElement('span');
+          sectionLabel.className = 'copy-label';
+          sectionLabel.textContent = label;
+          const sectionCopy = document.createElement('div');
+          sectionCopy.className = 'finding-section-copy';
+          sectionCopy.textContent = value;
+          section.append(sectionLabel, sectionCopy);
+          panel.append(section);
+          return section;
+        };
+        addFindingSection('Issue', finding.explanation || finding.title);
+        const fixSection = addFindingSection('Fix', finding.recommendation || 'No verified remediation was returned.');
+        for (const change of matchingChanges) {
+          fixSection.append(makeChangeCard(change));
+          renderedChanges.add(change);
+        }
+        const brief = (value, maxWords) => {
+          const words = String(value || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+          return words.length > maxWords ? `${words.slice(0, maxWords).join(' ')}…` : words.join(' ');
+        };
+        const issueSummary = brief(finding.title || finding.explanation || 'An API compatibility issue was found.', 12);
+        const fixSummary = brief(finding.recommendation || 'Review the proposed change before publishing.', 16);
+        addFindingSection('Summary', `Issue: ${issueSummary}\nFix: ${fixSummary}`);
+        const fixCheck = document.createElement('div');
+        const verified = finding.verification_status === 'verified';
+        const rechecked = finding.verification_status === 'recheck_passed';
+        const stillPresent = finding.verification_status === 'still_detected';
+        fixCheck.className = `verification ${verified ? 'verified' : (rechecked ? 'recheck' : (stillPresent ? 'failed' : 'warning'))}`;
+        fixCheck.textContent = `Fix check: ${finding.verification_status || 'not run'} · ${finding.verification_message || 'No automatic fix check is available.'}`;
+        panel.append(fixCheck);
         const workflow = document.createElement('div');
         workflow.className = 'workflow';
         const fixButton = document.createElement('button');
         fixButton.type = 'button';
         fixButton.className = 'secondary';
-        fixButton.textContent = existingChange ? 'Review proposed fix' : 'Generate safe fix';
+        fixButton.textContent = stillPresent
+          ? 'Generate a revised fix'
+          : (existingChange ? 'Review proposed fix' : 'Generate safe fix');
         fixButton.addEventListener('click', () => {
           fixButton.disabled = true;
-          void startFixWorkflow(workflow, finding, existingChange, result.repository)
+          const scanRevision = revisions.find((revision) => revision.branch === finding.branch);
+          void startFixWorkflow(
+            workflow,
+            finding,
+            stillPresent ? null : existingChange,
+            result.repository,
+            scanRevision,
+          )
             .finally(() => { fixButton.disabled = false; });
         });
-        card.append(title, problem, recommendation, evidence, fixButton, workflow);
+        const actions = document.createElement('div');
+        actions.className = 'finding-actions';
+        actions.append(fixButton);
+        panel.append(actions, workflow);
+        card.append(header, panel);
+        card.addEventListener('toggle', () => {
+          if (!card.open) return;
+          root.querySelectorAll('.finding-accordion[open]').forEach((other) => {
+            if (other !== card) other.open = false;
+          });
+        });
         root.append(card);
+      }
+
+      const resolvedFindings = result.resolved_findings || [];
+      if (resolvedFindings.length) {
+        const resolvedTitle = document.createElement('h3');
+        resolvedTitle.className = 'resolution-title';
+        resolvedTitle.textContent = `Resolved on scanned branch${resolvedFindings.length === 1 ? '' : 'es'} (${resolvedFindings.length})`;
+        root.append(resolvedTitle);
+        for (const finding of resolvedFindings) {
+          const card = document.createElement('div');
+          card.className = 'file';
+          const title = document.createElement('div');
+          title.className = 'file-title';
+          title.textContent = `${finding.branch}:${finding.file_path} · ${finding.title} · resolved`;
+          const detail = document.createElement('div');
+          detail.className = 'explanation';
+          detail.textContent = `No matching finding appeared at commit ${String(finding.resolved_in_commit_sha || '').slice(0, 12)}.`;
+          card.append(title, detail);
+          root.append(card);
+        }
       }
 
       if (!changes.length && !findings.length) {
@@ -407,21 +941,15 @@
         root.append(empty);
       }
 
-      for (const file of changes) {
-        const card = document.createElement('div');
-        card.className = 'file';
-        const title = document.createElement('div');
-        title.className = 'file-title';
-        title.textContent = file.branch ? `${file.branch} · ${file.file_path}` : file.file_path;
-        const diff = document.createElement('pre');
-        diff.className = 'diff';
-        diff.append(...makeDiff(file.original_code, file.updated_code));
-        const explanation = document.createElement('div');
-        explanation.className = 'explanation';
-        explanation.textContent = file.explanation;
-        card.append(title, diff, explanation);
-        root.append(card);
+      const unlinkedChanges = changes.filter((file) => !renderedChanges.has(file));
+      if (unlinkedChanges.length) {
+        const changeTitle = document.createElement('h3');
+        changeTitle.className = 'resolution-title';
+        changeTitle.textContent = 'Additional proposed changes';
+        root.append(changeTitle);
+        for (const file of unlinkedChanges) root.append(makeChangeCard(file));
       }
+      updateScrollProgress();
     }
 
     $('allBranches').addEventListener('change', () => {
@@ -429,8 +957,13 @@
     });
     $('branch').disabled = $('allBranches').checked;
 
-    $('scanForm').addEventListener('submit', async (event) => {
-      event.preventDefault();
+    async function runRepositoryAudit(overrides = {}) {
+      if ($('scanButton').disabled) return;
+      if (overrides.repoUrl !== undefined) $('repoUrl').value = overrides.repoUrl;
+      if (overrides.branch !== undefined) $('branch').value = overrides.branch;
+      if (overrides.allBranches !== undefined) $('allBranches').checked = overrides.allBranches;
+      if (overrides.changelog !== undefined) $('changelog').value = overrides.changelog;
+      $('branch').disabled = $('allBranches').checked;
       $('scanButton').disabled = true;
       $('scanProgress').style.display = 'flex';
       $('scanResult').replaceChildren();
@@ -446,7 +979,6 @@
           }),
         });
         renderScan(result);
-        void loadRuns();
       } catch (error) {
         $('scanResult').textContent = error.message;
         toast(error.message);
@@ -454,78 +986,14 @@
         $('scanButton').disabled = false;
         $('scanProgress').style.display = 'none';
       }
-    });
-
-    async function loadRuns() {
-      const root = $('runs');
-      try {
-        const data = await api('/api/mlops/runs');
-        root.replaceChildren();
-        if (!data.available) {
-          root.textContent = data.detail || 'MLflow is unavailable in this environment.';
-          return;
-        }
-        if (!data.runs.length) {
-          root.textContent = 'No tracked runs yet. Analyze a repository or run the DVC baseline.';
-          return;
-        }
-        for (const run of data.runs) {
-          const row = document.createElement('div');
-          row.className = 'run';
-          const left = document.createElement('div');
-          const name = document.createElement('b');
-          name.textContent = run.run_name;
-          const meta = document.createElement('small');
-          meta.textContent = `${run.experiment_name} · ${run.status}`;
-          left.append(name, meta);
-          const right = document.createElement('div');
-          right.className = 'run-value';
-          right.textContent = Object.entries(run.metrics || {}).slice(0, 2)
-            .map(([key, value]) => `${key}: ${Number(value).toFixed(2)}`)
-            .join(' · ') || String(run.run_id || 'run').slice(0, 8);
-          row.append(left, right);
-          root.append(row);
-        }
-      } catch (error) {
-        root.textContent = `Could not load MLflow runs: ${error.message}`;
-      }
     }
 
-    $('refreshRuns').addEventListener('click', loadRuns);
-    $('dvcButton').addEventListener('click', async () => {
-      const button = $('dvcButton');
-      button.disabled = true;
-      $('dvcSummary').textContent = 'Running DVC evaluation…';
-      $('dvcMetrics').replaceChildren();
-      try {
-        const result = await api('/api/mlops/dvc/repro', { method: 'POST' });
-        const detection = result.report.detection || {};
-        const patches = result.report.patches || {};
-        $('dvcSummary').textContent = `${result.report.case_results.length} cases · ${result.mlflow_run_id ? 'logged to MLflow' : 'report generated'}`;
-        const grid = document.createElement('div');
-        grid.className = 'metric-grid';
-        for (const [label, value] of [['Accuracy', detection.accuracy], ['F1', detection.f1], ['Patch rate', patches.patch_success_rate]]) {
-          const cell = document.createElement('div');
-          cell.className = 'metric';
-          const caption = document.createElement('span');
-          caption.textContent = label;
-          const number = document.createElement('b');
-          number.textContent = Number(value || 0).toFixed(2);
-          cell.append(caption, number);
-          grid.append(cell);
-        }
-        $('dvcMetrics').append(grid);
-        void loadRuns();
-      } catch (error) {
-        $('dvcSummary').textContent = error.message;
-        toast(error.message);
-      } finally {
-        button.disabled = false;
-      }
+    $('scanForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      await runRepositoryAudit();
     });
 
     void loadStatus();
-    void loadRuns();
   </script>
 </body>
 </html>

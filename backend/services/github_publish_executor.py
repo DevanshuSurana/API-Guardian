@@ -49,6 +49,39 @@ def validate_publishing_request(
         raise PublishingError("Migration branch cannot equal base branch.")
 
 
+def _require_repository_push_access(repository_name: str, token: str) -> None:
+    """Fail early with an actionable message if the token's account is read-only."""
+    url = f"https://api.github.com/repos/{repository_name}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    try:
+        response = httpx.get(url, headers=headers, timeout=15.0)
+    except httpx.HTTPError:
+        raise PublishingError(
+            "Could not verify GitHub repository write access. Check the network "
+            "connection and try again."
+        ) from None
+
+    if response.status_code != 200:
+        raise PublishingError(
+            "Could not verify GitHub repository access "
+            f"(HTTP {response.status_code}). Check that the token can access "
+            "this repository and read its metadata."
+        )
+
+    permissions = response.json().get("permissions") or {}
+    if permissions.get("push") is False:
+        raise PublishingError(
+            f"The configured GitHub account does not have write access to "
+            f"{repository_name}. Ask the repository owner to grant it Write "
+            "access, accept the invitation, then prepare a fresh review."
+        )
+
+
 # ============================================================
 # API Guardian - Secure GitHub Branch Publishing
 # File: backend/services/github_publish_executor.py
@@ -116,6 +149,9 @@ def publish_migration_branch(
 
     # Step 7: Obtain the GitHub token.
     token = get_github_token()
+
+    # Confirm the authenticated account can push before creating a local commit.
+    _require_repository_push_access(repository_name, token)
 
     # Step 8: Build the authentication header.
     credentials = base64.b64encode(f"x-access-token:{token}".encode()).decode(

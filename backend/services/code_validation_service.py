@@ -13,6 +13,7 @@ import json
 import subprocess
 import sys
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 
@@ -82,19 +83,11 @@ class CodeValidationError(Exception):
     """Raised when generated code fails validation."""
 
 
-def validate_generated_python(
+def _undefined_name_issues(
     source_code: str,
     file_path: str,
-) -> dict:
-    """
-    Validate AI-generated Python code without executing it.
-
-    Checks:
-      1. Python syntax
-      2. Undefined names using Ruff F821
-    """
-
-    import ast
+) -> list[dict]:
+    """Return Ruff F821 diagnostics after checking Python syntax."""
 
     try:
         ast.parse(source_code, filename=file_path)
@@ -143,6 +136,15 @@ def validate_generated_python(
                 "Ruff returned an invalid response."
             ) from error
 
+    return issues
+
+
+def validate_generated_python(
+    source_code: str,
+    file_path: str,
+) -> dict:
+    """Validate Python syntax and undefined names without executing code."""
+    issues = _undefined_name_issues(source_code, file_path)
     if issues:
         details = [
             {
@@ -161,5 +163,47 @@ def validate_generated_python(
         "file_path": file_path,
         "syntax_valid": True,
         "undefined_names": [],
+        "status": "passed",
+    }
+
+
+def validate_generated_python_change(
+    original_code: str,
+    updated_code: str,
+    file_path: str,
+) -> dict:
+    """Reject generated edits that introduce new undefined Python names."""
+    original_issues = _undefined_name_issues(original_code, file_path)
+    updated_issues = _undefined_name_issues(updated_code, file_path)
+
+    existing = Counter(
+        (issue.get("code"), issue.get("message"))
+        for issue in original_issues
+    )
+    introduced = []
+    for issue in updated_issues:
+        key = (issue.get("code"), issue.get("message"))
+        if existing[key]:
+            existing[key] -= 1
+        else:
+            introduced.append(issue)
+
+    if introduced:
+        details = [
+            {
+                "line": issue["location"]["row"],
+                "message": issue["message"],
+                "rule": issue["code"],
+            }
+            for issue in introduced
+        ]
+        raise CodeValidationError(
+            f"Proposed change introduces undefined names: {details}"
+        )
+
+    return {
+        "file_path": file_path,
+        "syntax_valid": True,
+        "new_undefined_names": [],
         "status": "passed",
     }

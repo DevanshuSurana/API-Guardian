@@ -52,6 +52,32 @@ class AutomaticAuditTests(unittest.TestCase):
         self.assertEqual(len(result["findings"]), 1)
         self.assertEqual(result["findings"][0]["title"], valid_finding["title"])
 
+    def test_audit_rejects_evidence_that_appears_only_in_python_comments_or_docstrings(self):
+        source = '''"""Old call: client.removed_call()."""
+# BUG: node_ids should be ids
+client.current_call()
+'''
+        finding = {
+            "title": "Incorrect Figma API query parameter",
+            "severity": "high",
+            "evidence": "BUG: node_ids should be ids",
+            "explanation": "The old query parameter is incompatible.",
+            "recommendation": "Rename the parameter.",
+            "proposed_code": "",
+            "patch_before": "",
+            "patch_after": "",
+        }
+        payload = {"message": {"content": json.dumps({
+            "api_detected": True,
+            "api_usages": [finding["evidence"], "client.removed_call()"],
+            "findings": [finding],
+        })}}
+        with patch("api_agent.urlopen", return_value=self.FakeResponse(payload)):
+            result = audit_api_source(source, "figma_client.py")
+
+        self.assertEqual(result["api_usages"], [])
+        self.assertEqual(result["findings"], [])
+
     def test_empty_source_does_not_call_ollama(self):
         with patch("api_agent.urlopen") as mocked:
             result = audit_api_source("  \n", "empty.py")

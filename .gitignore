@@ -14,3 +14,6 @@ mlops/evaluation/reports/
 # Generated Python and experiment artifacts
 *.egg-info/
 mlflow.db
+scan-history.db
+scan-history.db-shm
+scan-history.db-wal

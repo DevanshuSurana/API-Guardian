@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="16" fill="#1463ff"/>
-  <path d="M32 10 12 52h9l4-9h14l4 9h9L32 10Zm0 18 4 9h-8l4-9Z" fill="#fff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 80" role="img" aria-labelledby="title">
+  <title id="title">API Guardian</title>
+  <path d="M32 2 60 13v19c0 20-10.8 34.2-28 45C14.8 66.2 4 52 4 32V13L32 2Z" fill="#172844"/>
+  <path d="M25 25c-4.5 0-5.5 2.7-5.5 6.4v3.2c0 3.2-1.7 4.8-4.4 5.4 2.7.7 4.4 2.2 4.4 5.5v3.1c0 3.8 1 6.4 5.5 6.4m14-30c4.5 0 5.5 2.7 5.5 6.4v3.2c0 3.2 1.7 4.8 4.4 5.4-2.7.7-4.4 2.2-4.4 5.5v3.1c0 3.8-1 6.4-5.5 6.4" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="40" r="4.2" fill="#55e2ca"/>
 </svg>

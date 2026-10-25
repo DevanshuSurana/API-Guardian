@@ -49,6 +49,7 @@ from services.publish_review_service import (
     get_publish_status,
     prepare_publish_review,
 )
+from services.repository_service import StaleRepositoryRevisionError
 
 # Group migration-related endpoints together
 router = APIRouter(
@@ -101,6 +102,8 @@ async def generate_api_finding_fix(request: FixProposalRequest):
     """Generate a validated Python patch for one selected API finding."""
     try:
         return await asyncio.to_thread(generate_finding_fix, request)
+    except StaleRepositoryRevisionError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     except PatchError as error:
@@ -373,6 +376,8 @@ def prepare_reviewed_publish(request: MigrationPlanRequest):
     """Build an immutable diff for review; this endpoint performs no remote writes."""
     try:
         return prepare_publish_review(request)
+    except StaleRepositoryRevisionError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     except PatchError as error:

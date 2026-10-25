@@ -57,6 +57,7 @@ from services.pull_request_service import (
     build_pull_request_payload,
 )
 from services.repository_service import (
+    StaleRepositoryRevisionError,
     cleanup_workspace,
     clone_repository,
 )
@@ -356,6 +357,14 @@ def create_migration_plan(
         )
 
         base_commit_sha = Repo(repository_path).head.commit.hexsha
+        if (
+            request.expected_base_commit_sha
+            and base_commit_sha != request.expected_base_commit_sha
+        ):
+            raise StaleRepositoryRevisionError(
+                "The repository branch changed after this scan. Run a fresh audit "
+                "and review the updated finding before preparing a pull request."
+            )
 
         # Step 4: Create a local migration branch.
         branch_name = create_migration_branch(

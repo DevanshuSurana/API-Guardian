@@ -2,14 +2,17 @@ import asyncio
 import time
 
 import pytest
+from git import Repo
 
 from models.schemas import (
     MigrationPlanRequest,
     MigrationPlanResponse,
     PublishApprovalRequest,
 )
+from services import migration_service
 from services import publish_review_service as reviews
 from services.github_publish_executor import PublishingError
+from services.repository_service import StaleRepositoryRevisionError
 
 
 def _request():
@@ -63,6 +66,29 @@ def test_prepare_review_caches_exact_diff_without_writes(monkeypatch):
     assert result.base_commit_sha == "a" * 40
     assert not result.publish_ready
     assert result.review_id in reviews._pending_reviews
+
+
+def test_migration_plan_rejects_a_base_changed_since_the_scan(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    repository_path = workspace / "repository"
+    repository_path.mkdir(parents=True)
+    repository = Repo.init(repository_path, initial_branch="main")
+    repository.config_writer().set_value("user", "name", "API Guardian Test").release()
+    repository.config_writer().set_value("user", "email", "test@example.com").release()
+    (repository_path / "client.py").write_text("client.old_call()\n", encoding="utf-8")
+    repository.index.add(["client.py"])
+    repository.index.commit("initial commit")
+    monkeypatch.setattr(
+        migration_service,
+        "clone_repository",
+        lambda *_args, **_kwargs: (workspace, repository_path),
+    )
+    request = _request().model_copy(update={"expected_base_commit_sha": "f" * 40})
+
+    with pytest.raises(StaleRepositoryRevisionError, match="changed after this scan"):
+        migration_service.create_migration_plan(request)
+
+    assert not workspace.exists()
 
 
 def test_unchecked_approval_is_rejected():

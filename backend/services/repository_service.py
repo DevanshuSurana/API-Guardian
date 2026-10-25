@@ -101,6 +101,10 @@ OWNER_PATTERN = re.compile(r"^[A-Za-z0-9-]{1,39}$")
 REPO_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
 
 
+class StaleRepositoryRevisionError(ValueError):
+    """Raised when code changed after a finding was scanned."""
+
+
 def validate_repository(owner: str, repo: str):
     """
     Validate the repository owner and name.
@@ -276,6 +280,11 @@ def checkout_repository_branch(repository_path: Path, branch: str) -> None:
         repository.git.checkout(branch)
     else:
         raise ValueError(f"Branch '{branch}' was not found in the repository")
+
+
+def checked_out_commit_sha(repository_path: Path) -> str:
+    """Return the full commit SHA currently checked out in a cloned repository."""
+    return Repo(repository_path).head.commit.hexsha
 
 
 def cleanup_workspace(workspace: Path):

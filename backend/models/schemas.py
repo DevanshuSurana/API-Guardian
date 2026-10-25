@@ -39,6 +39,7 @@ class APIUsage(BaseModel):
 
 
 class APIFinding(BaseModel):
+    fingerprint: str = ""
     file_path: str
     branch: str
     severity: str
@@ -47,6 +48,18 @@ class APIFinding(BaseModel):
     explanation: str
     recommendation: str
     proposed_code: str | None = None
+    lifecycle_status: str = "new"
+    verification_status: str = "not_run"
+    verification_message: str | None = None
+    first_seen_at: str | None = None
+    last_seen_at: str | None = None
+    resolved_in_commit_sha: str | None = None
+    resolved_at: str | None = None
+
+
+class ScannedRevision(BaseModel):
+    branch: str
+    commit_sha: str
 
 
 class MigrationResponse(BaseModel):
@@ -56,10 +69,14 @@ class MigrationResponse(BaseModel):
     summary: str
     status: str
     branches_scanned: list[str] = Field(default_factory=list)
+    scanned_revisions: list[ScannedRevision] = Field(default_factory=list)
     api_detected: bool = False
     api_usages: list[APIUsage] = Field(default_factory=list)
     findings: list[APIFinding] = Field(default_factory=list)
-    mlflow_run_id: str | None = None
+    resolved_findings: list[APIFinding] = Field(default_factory=list)
+    scan_id: str | None = None
+    history_reconciled: bool = False
+    history_message: str | None = None
 
 
 class FixProposalRequest(MigrationRequest):
@@ -69,6 +86,7 @@ class FixProposalRequest(MigrationRequest):
     finding_title: str = Field(min_length=1)
     problem: str = Field(min_length=1)
     recommendation: str = Field(min_length=1)
+    expected_commit_sha: str | None = None
 
 
 class FixProposalResponse(BaseModel):
@@ -78,6 +96,10 @@ class FixProposalResponse(BaseModel):
     changes: list[FileChange] = Field(default_factory=list)
     diff: str
     status: str
+    verification_status: str = "not_run"
+    verification_message: str | None = None
+    branch: str | None = None
+    base_commit_sha: str | None = None
 
 
 class PatchPreviewRequest(BaseModel):
@@ -216,6 +238,7 @@ class MigrationPlanRequest(PreparePullRequestRequest):
         default="fix: migrate deprecated API usage",
         min_length=1,
     )
+    expected_base_commit_sha: str | None = None
 
 
 class MigrationPlanResponse(BaseModel):

@@ -12,13 +12,12 @@
 #   - Provide application health-check endpoints
 # ============================================================
 
+import os
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, RedirectResponse
-
 from routes.migrations import router as migrations_router
-from routes.mlops import router as mlops_router
 from routes.repositories import router as repositories_router
 from routes.workspaces import router as workspaces_router
 
@@ -37,7 +36,6 @@ app.include_router(repositories_router)
 app.include_router(workspaces_router)
 
 app.include_router(migrations_router)
-app.include_router(mlops_router)
 
 
 @app.get("/ui", include_in_schema=False)
@@ -86,5 +84,6 @@ def health_check():
 
     return {
         "status": "healthy",
-        "service": "API Guardian Backend"
+        "service": "API Guardian Backend",
+        "model": os.getenv("OLLAMA_MODEL", "gemma3:4b"),
     }

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import re
-import time
+from logging import getLogger
+from uuid import uuid4
 
 from git import Repo
 from models.schemas import (
@@ -16,6 +16,7 @@ from models.schemas import (
     FixProposalResponse,
     MigrationRequest,
     MigrationResponse,
+    ScannedRevision,
 )
 
 from services.ai_integration_service import (
@@ -26,11 +27,18 @@ from services.ai_integration_service import (
 from services.api_detection_service import (
     collect_dependency_context,
     detect_api_usages,
+    detect_figma_compatibility_issues,
     detect_notion_legacy_migration,
+    notion_legacy_version_configured,
 )
-from services.mlflow_service import log_live_analysis
+from services.code_validation_service import (
+    CodeValidationError,
+    validate_generated_python_change,
+)
 from services.patch_service import PatchError, generate_diff, validate_file_path
 from services.repository_service import (
+    StaleRepositoryRevisionError,
+    checked_out_commit_sha,
     checkout_repository_branch,
     cleanup_workspace,
     clone_repository,
@@ -38,6 +46,206 @@ from services.repository_service import (
     parse_github_repository_url,
     repository_branches,
 )
+from services.scan_history_service import (
+    DEFAULT_DATABASE_PATH as SCAN_HISTORY_DATABASE_PATH,
+)
+
+logger = getLogger(__name__)
+from services.scan_history_service import (
+    record_scan_findings,
+)
+
+_ACTIONABLE_COMPATIBILITY_SIGNAL = re.compile(
+    r"\b(?:deprecated|deprecation|removed|no longer supported|breaking(?:\s+change)?|"
+    r"incompatib\w*|unsupported|invalid\s+(?:argument|parameter|endpoint|request|response)|"
+    r"sunset|end[- ]of[- ]life|renamed|moved to|replaced by|will fail|fails when|"
+    r"legacy (?:endpoint|route)|changed endpoint|changed route|new endpoint required|"
+    r"data[- ]source migration|requires? (?:a )?migration|"
+    r"(?:invalid|incorrect|unsupported|unknown) query parameter)\b",
+    re.IGNORECASE,
+)
+_CONFIRMED_BREAKING_SIGNAL = re.compile(
+    r"\b(?:removed|no longer supported|breaking(?:\s+change)?|incompatib\w*|"
+    r"unsupported|invalid\s+(?:argument|parameter|endpoint|request|response)|"
+    r"invalid query parameter|will fail|fails when|changed endpoint|changed route)\b",
+    re.IGNORECASE,
+)
+
+
+def _finding_is_actionable(finding: dict) -> bool:
+    """Discard advice that does not identify a compatibility risk."""
+    description = " ".join(
+        str(finding.get(field) or "")
+        for field in ("title", "explanation", "recommendation")
+    )
+    return bool(_ACTIONABLE_COMPATIBILITY_SIGNAL.search(description))
+
+
+def _calibrate_finding_severity(finding: dict) -> str:
+    """Reserve high severity for explicit, evidenced compatibility breaks."""
+    severity = str(finding.get("severity") or "info").lower()
+    description = " ".join(
+        str(finding.get(field) or "")
+        for field in ("title", "explanation", "recommendation")
+    )
+    confirmed_break = bool(_CONFIRMED_BREAKING_SIGNAL.search(description))
+    if severity == "critical":
+        return "high" if confirmed_break else "medium"
+    if severity == "high" and not confirmed_break:
+        return "medium"
+    return severity
+
+
+def _figma_finding_is_covered_by_static_rule(
+    finding: dict,
+    figma_findings: list[dict[str, str]],
+) -> bool:
+    """Drop model findings that restate a known Figma rule imprecisely."""
+    if not figma_findings:
+        return False
+    text = " ".join(
+        str(finding.get(field) or "")
+        for field in ("title", "evidence", "explanation", "recommendation")
+    ).casefold()
+    for static_finding in figma_findings:
+        title = static_finding.get("title", "")
+        if title == "Figma nodes call uses `node_ids` instead of `ids`":
+            if "node_ids" in text and (
+                "query parameter" in text
+                or "parameter" in text
+                or "figma" in text
+            ):
+                return True
+        elif (
+            title == "Figma file request uses `/file/` instead of `/files/`"
+            and ("/file/" in text or "singular file endpoint" in text)
+        ):
+            return True
+    return False
+
+
+def _figma_repair_kind(request: FixProposalRequest) -> str | None:
+    """Identify requests for known Figma endpoint/query rules."""
+    text = (
+        f"{request.finding_title} {request.problem} {request.recommendation}"
+    ).casefold()
+    if "figma" not in text:
+        return None
+    if "node_ids" in text or "query parameter" in text or "get_nodes" in text:
+        return "nodes_query_parameter"
+    if "/file/" in text or "file endpoint" in text or "file request" in text:
+        return "file_endpoint"
+    return None
+
+
+def _validated_proposed_code(
+    original_code: str,
+    proposed_code: str | None,
+    file_path: str,
+) -> str | None:
+    """Return a Python proposal only if it introduces no undefined names."""
+    if (
+        not proposed_code
+        or proposed_code == original_code
+        or not file_path.lower().endswith(".py")
+    ):
+        return None
+    try:
+        validate_generated_python_change(
+            original_code,
+            proposed_code,
+            file_path,
+        )
+    except CodeValidationError:
+        return None
+    return proposed_code
+
+
+def _normalized_finding_title(title: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", title.casefold()).strip()
+
+
+def _verify_proposed_fixes(
+    file_path: str,
+    dependency_context: str,
+    findings: list[dict],
+) -> dict[str, tuple[str, str]]:
+    """Re-run the matching detector against each proposed source version."""
+    grouped: dict[str, list[str]] = {}
+    for finding in findings:
+        proposed_code = finding.get("proposed_code")
+        if proposed_code:
+            grouped.setdefault(proposed_code, []).append(str(finding["title"]))
+
+    verification: dict[str, tuple[str, str]] = {}
+    for proposed_code, titles in grouped.items():
+        figma_findings = detect_figma_compatibility_issues(proposed_code, file_path)
+        figma_titles = {finding["title"] for finding in figma_findings}
+        notion_finding = detect_notion_legacy_migration(proposed_code)
+        notion_still_detected = bool(notion_finding)
+        generic_titles = [
+            title for title in titles
+            if not title.startswith("Figma ")
+            and title != "Notion database queries need a data-source migration"
+        ]
+
+        follow_up_titles: set[str] = set()
+        follow_up_error: str | None = None
+        if generic_titles:
+            try:
+                follow_up = audit_source_for_api_issues(
+                    proposed_code,
+                    file_path,
+                    dependency_context,
+                )
+                follow_up_titles = {
+                    _normalized_finding_title(str(item.get("title") or ""))
+                    for item in follow_up.get("findings", [])
+                    if isinstance(item, dict)
+                }
+            except Exception as error:  # noqa: BLE001 - Keep the scan result usable.
+                follow_up_error = str(error)
+
+        for title in titles:
+            if title.startswith("Figma "):
+                if title in figma_titles:
+                    verification[title] = (
+                        "still_detected",
+                        "The Figma compatibility detector still finds this problem in the proposed code.",
+                    )
+                else:
+                    verification[title] = (
+                        "verified",
+                        "The Figma compatibility detector no longer finds this problem in the proposed code.",
+                    )
+            elif title == "Notion database queries need a data-source migration":
+                if notion_still_detected:
+                    verification[title] = (
+                        "still_detected",
+                        "The Notion migration detector still finds the legacy version and query route.",
+                    )
+                else:
+                    verification[title] = (
+                        "verified",
+                        "The Notion migration detector no longer finds the legacy version and query route.",
+                    )
+            elif follow_up_error:
+                verification[title] = (
+                    "unverified",
+                    f"The follow-up audit could not verify this proposal: {follow_up_error}",
+                )
+            elif _normalized_finding_title(title) in follow_up_titles:
+                verification[title] = (
+                    "still_detected",
+                    "The follow-up audit still reports this finding in the proposed code.",
+                )
+            else:
+                verification[title] = (
+                    "recheck_passed",
+                    "The follow-up audit did not repeat this finding. Review the diff before publishing.",
+                )
+
+    return verification
 
 
 def _repository_identity(request: MigrationRequest) -> tuple[str, str]:
@@ -54,7 +262,6 @@ def _repository_identity(request: MigrationRequest) -> tuple[str, str]:
 
 
 def _analyze_repository(request: MigrationRequest) -> MigrationResponse:
-    started_at = time.perf_counter()
     owner, repo = _repository_identity(request)
     workspace, repository_path = clone_repository(
         owner,
@@ -69,6 +276,7 @@ def _analyze_repository(request: MigrationRequest) -> MigrationResponse:
         affected_files: list[FileChange] = []
         findings: list[APIFinding] = []
         api_usages: list[APIUsage] = []
+        scanned_revisions: list[ScannedRevision] = []
         branches = (
             repository_branches(repository_path)
             if request.all_branches
@@ -77,10 +285,34 @@ def _analyze_repository(request: MigrationRequest) -> MigrationResponse:
 
         for branch in branches:
             checkout_repository_branch(repository_path, branch)
+            scanned_revisions.append(
+                ScannedRevision(
+                    branch=branch,
+                    commit_sha=checked_out_commit_sha(repository_path),
+                )
+            )
             dependency_context, dependency_versions = collect_dependency_context(
                 repository_path
             )
-            for relative_path in list_source_files(repository_path):
+            source_files = list_source_files(repository_path)
+            legacy_notion_version_configured = False
+            for config_relative_path in source_files:
+                if not config_relative_path.lower().endswith(".py"):
+                    continue
+                try:
+                    config_source = (repository_path / config_relative_path).read_text(
+                        encoding="utf-8",
+                        errors="replace",
+                    )
+                except OSError as error:
+                    raise RuntimeError(
+                        f"Could not read source file '{branch}:{config_relative_path}': {error}"
+                    ) from error
+                if notion_legacy_version_configured(config_source):
+                    legacy_notion_version_configured = True
+                    break
+
+            for relative_path in source_files:
                 source_path = repository_path / relative_path
                 try:
                     source_code = source_path.read_text(
@@ -127,19 +359,63 @@ def _analyze_repository(request: MigrationRequest) -> MigrationResponse:
                     )
                     breaking_change = breaking_change or file_breaking
                     if change is not None:
-                        change.branch = branch
-                        affected_files.append(change)
+                        validated_code = _validated_proposed_code(
+                            change.original_code,
+                            change.updated_code,
+                            relative_path,
+                        )
+                        if validated_code is not None:
+                            change.branch = branch
+                            affected_files.append(change)
                     continue
 
-                if not detected:
-                    continue
-                audit = audit_source_for_api_issues(
+                figma_migrations = detect_figma_compatibility_issues(
                     source_code,
                     relative_path,
-                    dependency_context,
                 )
-                audit_findings = list(audit["findings"])
-                notion_migration = detect_notion_legacy_migration(source_code)
+                notion_migration = detect_notion_legacy_migration(
+                    source_code,
+                    legacy_version_configured=legacy_notion_version_configured,
+                    file_path=relative_path,
+                )
+                if not detected and not figma_migrations and not notion_migration:
+                    continue
+                audit_findings = []
+                if detected:
+                    audit = audit_source_for_api_issues(
+                        source_code,
+                        relative_path,
+                        dependency_context,
+                    )
+                    audit_findings.extend(
+                        item
+                        for item in audit["findings"]
+                        if isinstance(item, dict)
+                        and not _figma_finding_is_covered_by_static_rule(
+                            item,
+                            figma_migrations,
+                        )
+                    )
+                for item in figma_migrations:
+                    api_usage = APIUsage(
+                        file_path=relative_path,
+                        branch=branch,
+                        provider="Figma REST API",
+                        evidence=item["evidence"],
+                    )
+                    if not any(
+                        usage.provider == api_usage.provider
+                        and usage.file_path == api_usage.file_path
+                        and usage.branch == api_usage.branch
+                        and usage.evidence == api_usage.evidence
+                        for usage in api_usages
+                    ):
+                        api_usages.append(api_usage)
+                    if not any(
+                        existing["title"] == item["title"]
+                        for existing in audit_findings
+                    ):
+                        audit_findings.append(item)
                 if notion_migration and not any(
                     item["title"] == notion_migration["title"]
                     for item in audit_findings
@@ -148,33 +424,124 @@ def _analyze_repository(request: MigrationRequest) -> MigrationResponse:
                         **notion_migration,
                         "proposed_code": "",
                     })
+                if notion_migration:
+                    notion_usage = APIUsage(
+                        file_path=relative_path,
+                        branch=branch,
+                        provider="Notion REST API",
+                        evidence=notion_migration["evidence"],
+                    )
+                    if not any(
+                        usage.provider == notion_usage.provider
+                        and usage.file_path == notion_usage.file_path
+                        and usage.branch == notion_usage.branch
+                        and usage.evidence == notion_usage.evidence
+                        for usage in api_usages
+                    ):
+                        api_usages.append(notion_usage)
+                verification_by_title = _verify_proposed_fixes(
+                    relative_path,
+                    dependency_context,
+                    audit_findings,
+                )
                 for item in audit_findings:
+                    if not _finding_is_actionable(item):
+                        continue
+                    proposed_code = _validated_proposed_code(
+                        source_code,
+                        item.get("proposed_code"),
+                        relative_path,
+                    )
+                    verification_status, verification_message = (
+                        verification_by_title.get(
+                            item["title"],
+                            (
+                                "no_fix",
+                                "No safe, validated code proposal is available for this finding.",
+                            ),
+                        )
+                        if proposed_code
+                        else (
+                            "no_fix",
+                            "No safe, validated code proposal is available for this finding.",
+                        )
+                    )
                     finding = APIFinding(
                         file_path=relative_path,
                         branch=branch,
-                        severity=item["severity"],
+                        severity=_calibrate_finding_severity(item),
                         title=item["title"],
                         evidence=item["evidence"],
                         explanation=item["explanation"],
                         recommendation=item["recommendation"],
-                        proposed_code=item["proposed_code"] or None,
+                        proposed_code=proposed_code,
+                        verification_status=verification_status,
+                        verification_message=verification_message,
                     )
                     findings.append(finding)
-                    if item["proposed_code"]:
-                        affected_files.append(
-                            FileChange(
-                                file_path=relative_path,
-                                original_code=source_code,
-                                updated_code=item["proposed_code"],
-                                explanation=(
-                                    f"{item['title']}: {item['recommendation']}"
-                                ),
-                                branch=branch,
-                            )
+                    if proposed_code:
+                        existing_change = next(
+                            (
+                                change
+                                for change in affected_files
+                                if change.file_path == relative_path
+                                and change.branch == branch
+                                and change.updated_code == proposed_code
+                            ),
+                            None,
                         )
+                        if existing_change is None:
+                            affected_files.append(
+                                FileChange(
+                                    file_path=relative_path,
+                                    original_code=source_code,
+                                    updated_code=proposed_code,
+                                    explanation=(
+                                        f"{item['title']}: {item['recommendation']}"
+                                    ),
+                                    branch=branch,
+                                )
+                            )
 
         if not request.changelog.strip():
             breaking_change = bool(findings)
+
+        scan_id = uuid4().hex
+        targeted_scan = bool(request.changelog.strip())
+        resolved_findings: list[APIFinding] = []
+        history_reconciled = False
+        if targeted_scan:
+            history_message = (
+                "This targeted changelog scan does not resolve prior findings. "
+                "Run a full audit of the same branch to confirm resolution."
+            )
+        else:
+            history_message = None
+        try:
+            tracked_findings, resolved_records = record_scan_findings(
+                f"{owner}/{repo}",
+                scan_id,
+                [revision.model_dump() for revision in scanned_revisions],
+                findings,
+                reconcile=not targeted_scan,
+                database_path=SCAN_HISTORY_DATABASE_PATH,
+            )
+            findings = [APIFinding(**item) for item in tracked_findings]
+            resolved_findings = [APIFinding(**item) for item in resolved_records]
+            history_reconciled = not targeted_scan
+            if not targeted_scan and resolved_records:
+                history_message = (
+                    f"Confirmed {len(resolved_records)} finding(s) resolved "
+                    "on the scanned branch revision(s)."
+                )
+            elif not targeted_scan:
+                history_message = "Finding history reconciled for every scanned branch."
+        except Exception as error:
+            logger.exception("Could not persist API Guardian scan history")
+            history_message = (
+                "This scan completed, but local finding history could not be updated: "
+                f"{error}"
+            )
 
         if request.changelog.strip():
             summary = (
@@ -208,18 +575,14 @@ def _analyze_repository(request: MigrationRequest) -> MigrationResponse:
             summary=summary,
             status="analysis_complete",
             branches_scanned=branches,
+            scanned_revisions=scanned_revisions,
             api_detected=bool(api_usages),
             api_usages=api_usages,
             findings=findings,
-        )
-        result.mlflow_run_id = log_live_analysis(
-            repository=result.repository,
-            breaking_change=result.breaking_change,
-            affected_file_count=len(result.affected_files),
-            status=result.status,
-            duration_seconds=time.perf_counter() - started_at,
-            model=os.getenv("OLLAMA_MODEL", "gemma3:4b"),
-            file_paths=[change.file_path for change in result.affected_files],
+            resolved_findings=resolved_findings,
+            scan_id=scan_id,
+            history_reconciled=history_reconciled,
+            history_message=history_message,
         )
         return result
     finally:
@@ -494,18 +857,112 @@ def generate_finding_fix(request: FixProposalRequest) -> FixProposalResponse:
         branch=request.branch,
     )
     try:
+        branch = request.branch or Repo(repository_path).active_branch.name
+        base_commit_sha = checked_out_commit_sha(repository_path)
+        if (
+            request.expected_commit_sha
+            and base_commit_sha != request.expected_commit_sha
+        ):
+            raise StaleRepositoryRevisionError(
+                "The repository branch changed after this scan. Run a fresh audit "
+                "before generating a fix."
+            )
         source_path = validate_file_path(
             str(repository_path),
             request.file_path,
         )
         source_code = source_path.read_text(encoding="utf-8")
-        branch = request.branch or Repo(repository_path).active_branch.name
+        dependency_context, _dependency_versions = collect_dependency_context(
+            repository_path
+        )
+        figma_repair_kind = _figma_repair_kind(request)
+        if figma_repair_kind:
+            title_by_kind = {
+                "nodes_query_parameter": "Figma nodes call uses `node_ids` instead of `ids`",
+                "file_endpoint": "Figma file request uses `/file/` instead of `/files/`",
+            }
+            figma_finding = next(
+                (
+                    finding
+                    for finding in detect_figma_compatibility_issues(
+                        source_code,
+                        request.file_path,
+                    )
+                    if finding["title"] == title_by_kind[figma_repair_kind]
+                ),
+                None,
+            )
+            if figma_finding is None:
+                raise ValueError(
+                    "The Figma issue from this audit is no longer present in the "
+                    "selected source file. Run a fresh audit before generating a fix."
+                )
+            try:
+                validate_generated_python_change(
+                    source_code,
+                    figma_finding["proposed_code"],
+                    request.file_path,
+                )
+            except CodeValidationError as error:
+                raise ValueError(
+                    "The deterministic Figma fix failed static Python checks: "
+                    f"{error}. No files were changed."
+                ) from error
+            change = FileChange(
+                file_path=request.file_path,
+                original_code=source_code,
+                updated_code=figma_finding["proposed_code"],
+                explanation=(
+                    f"{figma_finding['title']}: "
+                    f"{figma_finding['recommendation']}"
+                ),
+                branch=branch,
+            )
+            diff = generate_diff(str(repository_path), change)
+            if not diff:
+                raise ValueError("The proposed fix does not change the source file.")
+            verification = _verify_proposed_fixes(
+                request.file_path,
+                dependency_context,
+                [{
+                    "title": figma_finding["title"],
+                    "proposed_code": change.updated_code,
+                }],
+            ).get(figma_finding["title"], (
+                "unverified",
+                "The Figma fix could not be rechecked.",
+            ))
+            return FixProposalResponse(
+                change=change,
+                changes=[change],
+                diff=diff,
+                status="fix_proposed",
+                verification_status=verification[0],
+                verification_message=verification[1],
+                branch=branch,
+                base_commit_sha=base_commit_sha,
+            )
+
         targeted_changes = _notion_data_source_migration(
             repository_path,
             request,
             branch,
         )
         if targeted_changes:
+            for change in targeted_changes:
+                if not change.file_path.lower().endswith(".py"):
+                    continue
+                try:
+                    validate_generated_python_change(
+                        change.original_code,
+                        change.updated_code,
+                        change.file_path,
+                    )
+                except CodeValidationError as error:
+                    raise ValueError(
+                        "The generated Notion migration failed static Python checks: "
+                        f"{error}. No files were changed."
+                    ) from error
             diffs = [
                 generate_diff(str(repository_path), change)
                 for change in targeted_changes
@@ -513,11 +970,38 @@ def generate_finding_fix(request: FixProposalRequest) -> FixProposalResponse:
             combined_diff = "\n".join(diff for diff in diffs if diff)
             if not combined_diff:
                 raise ValueError("The proposed fix does not change any source files.")
+            target_change = next(
+                (
+                    change for change in targeted_changes
+                    if change.file_path == request.file_path
+                ),
+                None,
+            )
+            verification = (
+                _verify_proposed_fixes(
+                    request.file_path,
+                    dependency_context,
+                    [{
+                        "title": request.finding_title,
+                        "proposed_code": target_change.updated_code,
+                    }],
+                ).get(request.finding_title)
+                if target_change
+                else None
+            )
             return FixProposalResponse(
                 change=targeted_changes[0],
                 changes=targeted_changes,
                 diff=combined_diff,
                 status="fix_proposed",
+                verification_status=verification[0] if verification else "unverified",
+                verification_message=(
+                    verification[1]
+                    if verification
+                    else "The targeted migration did not include the finding's source file, so it could not be rechecked."
+                ),
+                branch=branch,
+                base_commit_sha=base_commit_sha,
             )
 
         changelog = (
@@ -543,15 +1027,42 @@ def generate_finding_fix(request: FixProposalRequest) -> FixProposalResponse:
                 "Review the recommendation and update the API change details."
             )
 
+        try:
+            validate_generated_python_change(
+                change.original_code,
+                change.updated_code,
+                change.file_path,
+            )
+        except CodeValidationError as error:
+            raise ValueError(
+                "The proposed fix failed static Python checks, so API Guardian "
+                f"cannot prepare it for review: {error}. No files were changed."
+            ) from error
+
         change.branch = branch
         diff = generate_diff(str(repository_path), change)
         if not diff:
             raise ValueError("The proposed fix does not change the source file.")
+        verification = _verify_proposed_fixes(
+            request.file_path,
+            dependency_context,
+            [{
+                "title": request.finding_title,
+                "proposed_code": change.updated_code,
+            }],
+        ).get(request.finding_title, (
+            "unverified",
+            "The proposed change could not be rechecked.",
+        ))
         return FixProposalResponse(
             change=change,
             changes=[change],
             diff=diff,
             status="fix_proposed",
+            verification_status=verification[0],
+            verification_message=verification[1],
+            branch=branch,
+            base_commit_sha=base_commit_sha,
         )
     finally:
         cleanup_workspace(workspace)
